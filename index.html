@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Cuisine Planner - Gestion Hebdomadaire</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Cuisine">
+    <meta name="theme-color" content="#f9fafb"> 
+    <link rel="apple-touch-icon" href="/CuisinePlanner-logo-192.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+          font-family: 'Inter', sans-serif;
+          padding-top: env(safe-area-inset-top, 0px);
+          margin: 0;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; visibility: visible !important; }
+            
+            body { 
+              background: white !important; 
+              padding: 0 !important; 
+              margin: 0 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+
+            @page { 
+              size: A4 landscape; 
+              margin: 0; 
+            }
+
+            .print-page-container {
+              width: 297mm;
+              height: 210mm;
+              overflow: hidden;
+              background: white;
+            }
+            
+            .border-black { border-color: #000 !important; }
+        }
+        .print-only { display: none; }
+    </style>
+
+    <link rel="stylesheet" href="/index.css">
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Cuisine Planner prêt !'))
+            .catch(err => console.log('Erreur SW:', err));
+        });
+      }
+    </script>
+</head>
+<body class="bg-gray-50 text-gray-900">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
