@@ -20,13 +20,19 @@ const App: React.FC = () => {
   const printRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 1. Calcul de la semaine (Lundi 00:00)
   const currentWeekStart = startOfDay(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }));
   const weekLabel = `${format(currentWeekStart, 'dd MMM', { locale: fr })} - ${format(addDays(currentWeekStart, 4), 'dd MMM yyyy', { locale: fr })}`;
 
+  // --- PERSISTANCE ---
   useEffect(() => {
     const saved = localStorage.getItem('cuisine_tasks');
     if (saved) {
-      try { setTasks(JSON.parse(saved)); } catch (e) { console.error("Erreur chargement:", e); }
+      try {
+        setTasks(JSON.parse(saved));
+      } catch (e) {
+        console.error("Erreur chargement:", e);
+      }
     }
   }, []);
 
@@ -34,6 +40,7 @@ const App: React.FC = () => {
     localStorage.setItem('cuisine_tasks', JSON.stringify(tasks));
   }, [tasks]);
 
+  // --- PARAMÈTRES & ACTIONS ---
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(tasks, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
@@ -61,7 +68,7 @@ const App: React.FC = () => {
   };
 
   const handleResetAll = () => {
-    if (window.confirm("⚠️ ATTENTION : Voulez-vous vraiment supprimer TOUTES les tâches définitivement ?")) {
+    if (window.confirm("⚠️ ATTENTION : Voulez-vous supprimer TOUTES les tâches définitivement ?")) {
       setTasks([]);
       localStorage.removeItem('cuisine_tasks');
       setShowSettings(false);
@@ -83,29 +90,40 @@ const App: React.FC = () => {
     setIsModalOpen(true);
   };
 
+  // --- LOGIQUE PDF (NON VIDE) ---
   const handleDownloadPDF = async () => {
-    if (!printRef.current) return;
+    const element = printRef.current;
+    if (!element) return;
+    
     setIsGeneratingPdf(true);
     
-    setTimeout(async () => {
-      const opt = {
-        margin: 0,
-        filename: `Planning_${format(currentWeekStart, 'yyyy-MM-dd')}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, width: 1122, windowWidth: 1122 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-      };
+    // Configuration précise pour A4 Paysage
+    const opt = {
+      margin: 0,
+      filename: `Planning_${format(currentWeekStart, 'yyyy-MM-dd')}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        width: 1122, // Largeur A4 297mm en pixels approx
+        windowWidth: 1122,
+        logging: false
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    };
 
-      try { 
-        await html2pdf().set(opt).from(printRef.current).save(); 
-      } catch (err) {
-        console.error("Erreur PDF:", err);
-      } finally { 
-        setIsGeneratingPdf(false); 
-      }
-    }, 500);
+    try {
+      // On laisse le temps au composant de "s'allumer" dans le DOM
+      await new Promise(resolve => setTimeout(resolve, 600));
+      await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+      console.error("Erreur PDF:", err);
+    } finally { 
+      setIsGeneratingPdf(false); 
+    }
   };
 
+  // Filtrage robuste pour le rendu PDF
   const tasksForCurrentWeek = tasks.filter(t => {
     const tDate = typeof t.startTime === 'string' ? parseISO(t.startTime) : t.startTime;
     const taskDayStr = format(tDate, 'yyyy-MM-dd');
@@ -128,8 +146,8 @@ const App: React.FC = () => {
             </button>
             
             {showSettings && (
-              <div className="absolute right-0 mt-2 w-64 bg-white border-2 rounded-2xl shadow-2xl p-2 z-[60]">
-                <div className="text-[10px] font-black uppercase text-gray-400 p-2 border-b mb-1">Paramètres</div>
+              <div className="absolute right-0 mt-3 w-64 bg-white border-2 rounded-2xl shadow-2xl p-2 z-[60]">
+                <div className="text-[10px] font-black uppercase text-gray-400 p-2 border-b mb-1">Paramètres Système</div>
                 <button onClick={handleExportJSON} className="w-full text-left p-3 text-sm font-bold hover:bg-blue-50 rounded-xl flex items-center gap-2">
                   📤 Sauvegarder JSON
                 </button>
@@ -161,7 +179,8 @@ const App: React.FC = () => {
           onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
           onDeleteTask={(id) => { if(window.confirm("Supprimer ?")) setTasks(prev => prev.filter(t => t.id !== id)); }}
           onDuplicateTask={(t) => {
-            setTasks(prev => [...prev, { ...t, id: crypto.randomUUID(), name: t.name + " (Copie)" }]);
+            const newTask = { ...t, id: crypto.randomUUID(), name: t.name + " (Copie)" };
+            setTasks(prev => [...prev, newTask]);
           }}
           onMoveTask={(id, date, shift) => {
             setTasks(prev => prev.map(t => t.id === id ? {...t, startTime: format(date, "yyyy-MM-dd'T'HH:mm"), shift} : t));
@@ -174,13 +193,23 @@ const App: React.FC = () => {
         <button 
           onClick={handleDownloadPDF} 
           disabled={isGeneratingPdf} 
-          className="w-full bg-black text-white py-5 rounded-3xl font-black uppercase shadow-2xl active:scale-95 disabled:opacity-50"
+          className="w-full bg-black text-white py-5 rounded-3xl font-black uppercase shadow-2xl active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
         >
           {isGeneratingPdf ? "⏳ Génération..." : "📄 Exporter PDF Semaine"}
         </button>
       </div>
 
-      <div style={{ position: 'absolute', left: '-10000px', top: 0 }}>
+      {/* ZONE DE RENDU PDF : Invisible mais calculable par html2pdf */}
+      <div style={{ 
+        position: 'absolute', 
+        top: 0, 
+        left: 0, 
+        zIndex: -9999, 
+        opacity: 0, 
+        pointerEvents: 'none',
+        height: '1px',
+        overflow: 'hidden'
+      }}>
         <div ref={printRef}>
           <PrintLayout 
             tasks={tasksForCurrentWeek} 
