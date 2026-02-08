@@ -30,7 +30,7 @@ const App: React.FC = () => {
 
   const currentWeekStart = startOfDay(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }));
   const currentWeekEnd = addDays(currentWeekStart, 4);
-  const weekLabel = `${format(currentWeekStart, 'dd/MM')} - ${format(currentWeekEnd, 'dd/MM')}`;
+  const weekLabel = `${format(currentWeekStart, 'dd MMM', { locale: fr })} - ${format(currentWeekEnd, 'dd MMM', { locale: fr })}`;
 
   useEffect(() => {
     const saved = localStorage.getItem('cuisine_tasks');
@@ -151,58 +151,62 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 overflow-x-hidden flex flex-col font-sans">
-      <div className="no-print bg-[#0F172A] text-white py-1 px-3 flex justify-between items-center text-[7px] font-bold uppercase tracking-[0.3em] opacity-90">
+      {/* Fine Brand Line */}
+      <div className="no-print bg-[#0F172A] text-white py-1 px-4 flex justify-between items-center text-[7px] font-bold uppercase tracking-[0.3em] opacity-90">
         <span>BISTROT M</span>
         <span>PRODUCTION v2.6</span>
       </div>
 
-      <header className="no-print bg-white border-b border-slate-200 sticky top-0 z-[60] shadow-sm px-2">
-        <div className="max-w-7xl mx-auto h-20 grid grid-cols-3 items-center">
+      <header className="no-print bg-white border-b border-slate-200 sticky top-0 z-[60] shadow-sm px-3 sm:px-6">
+        <div className="max-w-7xl mx-auto h-20 sm:h-24 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           
-          {/* GAUCHE : LOGO & TITRE */}
-          <div className="flex items-center gap-2">
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 w-10 h-10 flex items-center justify-center rounded-xl text-white text-lg shadow-lg">
+          {/* GAUCHE : LOGO + TITRE PLANNER */}
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 w-11 h-11 flex items-center justify-center rounded-2xl text-white text-xl shadow-lg ring-2 ring-white">
               🍽️
             </div>
-            <h1 className="hidden sm:block font-black text-slate-900 text-sm tracking-tighter uppercase">Planner</h1>
+            <h1 className="font-black text-slate-900 text-lg sm:text-2xl tracking-tighter uppercase leading-none">
+              Planner
+            </h1>
           </div>
 
-          {/* CENTRE : NAVIGATION DATES (Compacte) */}
-          <div className="flex items-center bg-slate-100 rounded-xl p-0.5 border border-slate-200 justify-self-center">
-            <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-8 h-8 flex items-center justify-center text-slate-600 font-bold">‹</button>
-            <div className="px-1 flex flex-col items-center min-w-[70px] sm:min-w-[120px]">
-              <span className="text-[9px] font-black text-slate-800 uppercase leading-none">Sem.</span>
-              <span className="text-[7px] sm:text-[9px] font-bold text-blue-600 uppercase mt-0.5 tracking-tighter">{weekLabel}</span>
+          {/* CENTRE : NAVIGATION SEMAINE AGRANDIE */}
+          <div className="flex items-center bg-slate-100/80 rounded-2xl p-1 border border-slate-200 shadow-inner">
+            <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-slate-600 font-bold hover:bg-white rounded-xl transition-all">‹</button>
+            <div className="px-3 sm:px-6 flex flex-col items-center min-w-[110px] sm:min-w-[160px]">
+              <span className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest">Semaine</span>
+              <span className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase mt-0.5 whitespace-nowrap">{weekLabel}</span>
             </div>
-            <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-8 h-8 flex items-center justify-center text-slate-600 font-bold">›</button>
+            <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-slate-600 font-bold hover:bg-white rounded-xl transition-all">›</button>
           </div>
 
-          {/* DROITE : ACTIONS (Plaquées à droite) */}
-          <div className="flex items-center gap-1.5 justify-self-end">
+          {/* DROITE : ACTIONS */}
+          <div className="flex items-center gap-2 justify-self-end">
             <button 
               onClick={handleRequestPermission}
-              className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-all ${
+              className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl border-2 transition-all ${
                 notifPermission === 'granted' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-white text-slate-300 border-slate-100'
               }`}
             >
-              <span className="text-base">{notifPermission === 'granted' ? '🔔' : '🔕'}</span>
+              <span className="text-xl">{notifPermission === 'granted' ? '🔔' : '🔕'}</span>
             </button>
             
             <div className="relative">
               <button 
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-all ${
-                  isSettingsOpen ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border-slate-100 shadow-sm'
+                className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl border-2 transition-all ${
+                  isSettingsOpen ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-100 shadow-sm'
                 }`}
               >
-                <span className="text-base">⚙️</span>
+                <span className="text-xl">⚙️</span>
               </button>
 
               {isSettingsOpen && (
-                <div className="absolute top-[110%] right-0 w-44 bg-white border border-slate-200 rounded-2xl shadow-2xl py-2 z-[70]">
-                  <button onClick={handleExportData} className="w-full text-left px-4 py-2 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-3 uppercase">📤 Exporter</button>
-                  <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-4 py-2 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-3 uppercase">📥 Importer</button>
-                  <button onClick={() => { if(confirm("Reset ?")) setTasks([]); setIsSettingsOpen(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black text-rose-600 hover:bg-rose-50 flex items-center gap-3 uppercase">🗑️ Reset</button>
+                <div className="absolute top-[120%] right-0 w-48 bg-white border border-slate-200 rounded-[2rem] shadow-2xl py-3 z-[70] animate-in fade-in zoom-in duration-200">
+                  <button onClick={handleExportData} className="w-full text-left px-5 py-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-3 uppercase"><span>📤</span> Exporter</button>
+                  <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-5 py-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-3 uppercase"><span>📥</span> Importer</button>
+                  <div className="mx-4 my-2 border-t border-slate-100"></div>
+                  <button onClick={() => { if(confirm("Reset ?")) setTasks([]); setIsSettingsOpen(false); }} className="w-full text-left px-5 py-3 text-[10px] font-black text-rose-600 hover:bg-rose-50 flex items-center gap-3 uppercase"><span>🗑️</span> Reset</button>
                 </div>
               )}
             </div>
@@ -211,7 +215,7 @@ const App: React.FC = () => {
         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
       </header>
 
-      <main className="no-print w-full max-w-7xl mx-auto px-1 sm:px-4 mt-4 flex-1">
+      <main className="no-print w-full max-w-7xl mx-auto px-2 sm:px-4 mt-6 flex-1">
         <WeeklyCalendar 
           tasks={tasks}
           currentTime={currentTime}
@@ -223,17 +227,24 @@ const App: React.FC = () => {
           weekStartDate={currentWeekStart}
         />
         
+        {/* Alerts Monitor */}
         {activeAlerts.length > 0 && (
-          <div className="mt-8 px-2">
-            <h3 className="text-[10px] font-black text-slate-400 mb-3 flex items-center gap-2 uppercase tracking-[0.2em]">Monitor</h3>
-            <div className="grid grid-cols-1 gap-2">
+          <div className="mt-10 px-2 pb-10">
+            <h3 className="text-[11px] font-black text-slate-400 mb-4 flex items-center gap-3 uppercase tracking-[0.3em]">
+              <div className="h-1 flex-1 bg-slate-200 rounded-full"></div>
+              Live Monitor
+              <div className="h-1 flex-1 bg-slate-200 rounded-full"></div>
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {activeAlerts.map(alertTask => (
-                <div key={alertTask.id} className="p-3 rounded-2xl border flex items-center gap-3 bg-white shadow-sm border-slate-100">
-                  <span className="text-lg">{alertTask.status === 'ongoing' ? '🔥' : '🕒'}</span>
+                <div key={alertTask.id} className="p-4 rounded-3xl border-2 flex items-center gap-4 bg-white shadow-sm border-slate-100">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl ${alertTask.status === 'ongoing' ? 'bg-orange-100' : 'bg-blue-50'}`}>
+                    {alertTask.status === 'ongoing' ? '🔥' : '🕒'}
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-black text-[10px] uppercase truncate">{alertTask.name}</div>
-                    <div className="text-[8px] font-bold text-slate-400 uppercase">
-                      {Math.floor(alertTask.remainingSeconds / 60)} min
+                    <div className="font-black text-xs uppercase text-slate-800 truncate">{alertTask.name}</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
+                      {Math.floor(alertTask.remainingSeconds / 60)} min restantes
                     </div>
                   </div>
                 </div>
@@ -243,13 +254,15 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <div className="fixed bottom-4 right-4 z-40 no-print">
-        <button 
-          onClick={handleDownloadPDF}
-          disabled={isGeneratingPdf}
-          className="bg-slate-900 text-white w-14 h-14 rounded-2xl shadow-xl flex items-center justify-center border border-white/10"
-        >
-          {isGeneratingPdf ? '⏳' : <span className="font-black text-[10px]">PDF</span>}
+      {/* FAB PDF */}
+      <div className="fixed bottom-6 right-6 z-40 no-print">
+        <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-slate-900 text-white w-16 h-16 rounded-[2rem] shadow-2xl flex flex-col items-center justify-center transition-all active:scale-95 border-2 border-slate-700">
+          {isGeneratingPdf ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : (
+            <>
+              <span className="text-xl">📄</span>
+              <span className="font-black text-[9px] mt-1">PDF</span>
+            </>
+          )}
         </button>
       </div>
 
