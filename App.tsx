@@ -151,62 +151,55 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 overflow-x-hidden flex flex-col font-sans">
-      {/* Fine Brand Line */}
-      <div className="no-print bg-[#0F172A] text-white py-1 px-4 flex justify-between items-center text-[7px] font-bold uppercase tracking-[0.3em] opacity-90">
-        <span>BISTROT M</span>
-        <span>PRODUCTION v2.6</span>
+      {/* 1. Bar Branding Top (Évite le rognage) */}
+      <div className="bg-[#0F172A] text-white py-2 px-4 flex justify-between items-center shadow-lg z-[65]">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">🍽️</span>
+          <span className="font-black text-xs uppercase tracking-tighter">Planner Cuisine</span>
+        </div>
+        <span className="text-[7px] font-bold opacity-40 tracking-[0.2em]">BISTROT M v2.6</span>
       </div>
 
-      <header className="no-print bg-white border-b border-slate-200 sticky top-0 z-[60] shadow-sm px-3 sm:px-6">
-        <div className="max-w-7xl mx-auto h-20 sm:h-24 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+      <header className="no-print bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-[60] shadow-sm px-2 py-3">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
           
-          {/* GAUCHE : LOGO + TITRE PLANNER */}
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 w-11 h-11 flex items-center justify-center rounded-2xl text-white text-xl shadow-lg ring-2 ring-white">
-              🍽️
+          {/* NAVIGATION SEMAINE AGRANDIE (Prend le max de place au centre) */}
+          <div className="flex-1 flex items-center bg-slate-100 rounded-2xl p-1 border border-slate-200 shadow-inner max-w-[240px]">
+            <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-9 h-9 flex items-center justify-center text-slate-600 font-bold hover:bg-white rounded-xl transition-all">‹</button>
+            <div className="flex-1 flex flex-col items-center min-w-[100px]">
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Période</span>
+              <span className="text-[10px] font-bold text-blue-600 uppercase whitespace-nowrap">{weekLabel}</span>
             </div>
-            <h1 className="font-black text-slate-900 text-lg sm:text-2xl tracking-tighter uppercase leading-none">
-              Planner
-            </h1>
+            <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-9 h-9 flex items-center justify-center text-slate-600 font-bold hover:bg-white rounded-xl transition-all">›</button>
           </div>
 
-          {/* CENTRE : NAVIGATION SEMAINE AGRANDIE */}
-          <div className="flex items-center bg-slate-100/80 rounded-2xl p-1 border border-slate-200 shadow-inner">
-            <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-slate-600 font-bold hover:bg-white rounded-xl transition-all">‹</button>
-            <div className="px-3 sm:px-6 flex flex-col items-center min-w-[110px] sm:min-w-[160px]">
-              <span className="text-[10px] sm:text-xs font-black text-slate-900 uppercase tracking-widest">Semaine</span>
-              <span className="text-[9px] sm:text-[11px] font-bold text-blue-600 uppercase mt-0.5 whitespace-nowrap">{weekLabel}</span>
-            </div>
-            <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-slate-600 font-bold hover:bg-white rounded-xl transition-all">›</button>
-          </div>
-
-          {/* DROITE : ACTIONS */}
-          <div className="flex items-center gap-2 justify-self-end">
+          {/* ACTIONS (Maintenant garanties visibles à droite) */}
+          <div className="flex items-center gap-2 shrink-0">
             <button 
               onClick={handleRequestPermission}
-              className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl border-2 transition-all ${
+              className={`w-10 h-10 flex items-center justify-center rounded-2xl border-2 shadow-sm transition-all ${
                 notifPermission === 'granted' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-white text-slate-300 border-slate-100'
               }`}
             >
-              <span className="text-xl">{notifPermission === 'granted' ? '🔔' : '🔕'}</span>
+              <span className="text-lg">{notifPermission === 'granted' ? '🔔' : '🔕'}</span>
             </button>
             
             <div className="relative">
               <button 
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl border-2 transition-all ${
-                  isSettingsOpen ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-100 shadow-sm'
+                className={`w-10 h-10 flex items-center justify-center rounded-2xl border-2 shadow-sm transition-all ${
+                  isSettingsOpen ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-100'
                 }`}
               >
-                <span className="text-xl">⚙️</span>
+                <span className="text-lg">⚙️</span>
               </button>
 
               {isSettingsOpen && (
-                <div className="absolute top-[120%] right-0 w-48 bg-white border border-slate-200 rounded-[2rem] shadow-2xl py-3 z-[70] animate-in fade-in zoom-in duration-200">
-                  <button onClick={handleExportData} className="w-full text-left px-5 py-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-3 uppercase"><span>📤</span> Exporter</button>
-                  <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-5 py-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-3 uppercase"><span>📥</span> Importer</button>
-                  <div className="mx-4 my-2 border-t border-slate-100"></div>
-                  <button onClick={() => { if(confirm("Reset ?")) setTasks([]); setIsSettingsOpen(false); }} className="w-full text-left px-5 py-3 text-[10px] font-black text-rose-600 hover:bg-rose-50 flex items-center gap-3 uppercase"><span>🗑️</span> Reset</button>
+                <div className="absolute top-[120%] right-0 w-44 bg-white border border-slate-200 rounded-2xl shadow-2xl py-2 z-[70]">
+                  <button onClick={handleExportData} className="w-full text-left px-4 py-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-3 uppercase">📤 Exporter</button>
+                  <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-4 py-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-3 uppercase">📥 Importer</button>
+                  <div className="mx-3 my-1 border-t border-slate-100"></div>
+                  <button onClick={() => { if(confirm("Reset ?")) setTasks([]); setIsSettingsOpen(false); }} className="w-full text-left px-4 py-3 text-[10px] font-black text-rose-600 hover:bg-rose-50 flex items-center gap-3 uppercase">🗑️ Reset</button>
                 </div>
               )}
             </div>
@@ -215,7 +208,7 @@ const App: React.FC = () => {
         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
       </header>
 
-      <main className="no-print w-full max-w-7xl mx-auto px-2 sm:px-4 mt-6 flex-1">
+      <main className="no-print w-full max-w-7xl mx-auto px-1 sm:px-4 mt-4 flex-1">
         <WeeklyCalendar 
           tasks={tasks}
           currentTime={currentTime}
@@ -229,21 +222,15 @@ const App: React.FC = () => {
         
         {/* Alerts Monitor */}
         {activeAlerts.length > 0 && (
-          <div className="mt-10 px-2 pb-10">
-            <h3 className="text-[11px] font-black text-slate-400 mb-4 flex items-center gap-3 uppercase tracking-[0.3em]">
-              <div className="h-1 flex-1 bg-slate-200 rounded-full"></div>
-              Live Monitor
-              <div className="h-1 flex-1 bg-slate-200 rounded-full"></div>
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="mt-8 px-2 pb-10">
+            <h3 className="text-[10px] font-black text-slate-400 mb-3 flex items-center gap-2 uppercase tracking-[0.2em]">Monitor Live</h3>
+            <div className="grid grid-cols-1 gap-2">
               {activeAlerts.map(alertTask => (
-                <div key={alertTask.id} className="p-4 rounded-3xl border-2 flex items-center gap-4 bg-white shadow-sm border-slate-100">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl ${alertTask.status === 'ongoing' ? 'bg-orange-100' : 'bg-blue-50'}`}>
-                    {alertTask.status === 'ongoing' ? '🔥' : '🕒'}
-                  </div>
+                <div key={alertTask.id} className="p-3 rounded-2xl border flex items-center gap-3 bg-white shadow-sm border-slate-100 animate-pulse">
+                  <span className="text-lg">{alertTask.status === 'ongoing' ? '🔥' : '🕒'}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="font-black text-xs uppercase text-slate-800 truncate">{alertTask.name}</div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
+                    <div className="font-black text-[10px] uppercase truncate text-slate-800">{alertTask.name}</div>
+                    <div className="text-[8px] font-bold text-slate-400 uppercase">
                       {Math.floor(alertTask.remainingSeconds / 60)} min restantes
                     </div>
                   </div>
@@ -254,15 +241,9 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* FAB PDF */}
       <div className="fixed bottom-6 right-6 z-40 no-print">
-        <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-slate-900 text-white w-16 h-16 rounded-[2rem] shadow-2xl flex flex-col items-center justify-center transition-all active:scale-95 border-2 border-slate-700">
-          {isGeneratingPdf ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : (
-            <>
-              <span className="text-xl">📄</span>
-              <span className="font-black text-[9px] mt-1">PDF</span>
-            </>
-          )}
+        <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-slate-900 text-white w-14 h-14 rounded-2xl shadow-xl flex items-center justify-center border-2 border-slate-700 active:scale-90 transition-transform">
+          {isGeneratingPdf ? '⏳' : <span className="font-black text-[10px]">PDF</span>}
         </button>
       </div>
 
