@@ -1,7 +1,7 @@
 import React from 'react';
 import { PrepTask } from '../types.ts';
 import { SHIFTS } from '../constants.ts';
-import { formatDuration } from '../utils.ts';
+import { calculateExpiry } from '../utils.ts';
 import { addDays, isSameDay, format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -11,23 +11,30 @@ interface PrintLayoutProps {
   weekStartDate: Date;
 }
 
+// Fonction utilitaire pour l'affichage intelligent de la durée
+const formatDuration = (minutes: number) => {
+  if (minutes >= 60 && minutes % 15 === 0) {
+    return `${minutes / 60}H`;
+  }
+  return `${minutes} MIN`;
+};
+
 const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDate }) => {
   const weekDates = Array.from({ length: 5 }, (_, i) => addDays(weekStartDate, i));
 
-  // Tri global pour la section 2
   const sortedTasks = [...tasks]
     .filter(t => {
-       const taskDate = new Date(t.startTime);
-       return taskDate >= weekStartDate && taskDate <= addDays(weekStartDate, 5);
+      const taskDate = new Date(t.startTime);
+      return taskDate >= weekStartDate && taskDate <= addDays(weekStartDate, 5);
     })
-    .sort((a, b) => {
-      const dateA = new Date(a.startTime).getTime();
-      const dateB = new Date(b.startTime).getTime();
-      return dateA - dateB;
-    });
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
   return (
-    <div className="bg-white text-black font-sans" style={{ width: '297mm', minHeight: '210mm', padding: '8mm', boxSizing: 'border-box' }}>
+    <div className="bg-white text-black font-sans" style={{ width: '287mm', padding: '5mm', boxSizing: 'border-box' }}>
+      <style>{`
+        @page { size: landscape; margin: 0; }
+        .print-card { page-break-inside: avoid; break-inside: avoid; }
+      `}</style>
       
       {/* SECTION 1 : LE PLANNING HEBDOMADAIRE */}
       <section style={{ pageBreakAfter: 'always', marginBottom: '10mm' }}>
@@ -60,13 +67,12 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
           </thead>
           <tbody>
             {SHIFTS.map(shift => (
-              <tr key={shift.id} style={{ pageBreakInside: 'auto' }}>
+              <tr key={shift.id}>
                 <td className="border-[1.5px] border-black p-2 bg-gray-50 align-middle text-center">
                   <div className="text-xl mb-0.5">{shift.icon}</div>
                   <div className="text-[8px] font-black uppercase leading-tight">{shift.label}</div>
                 </td>
                 {weekDates.map((date, dayIdx) => {
-                  // FILTRAGE PAR DATE EXACTE ICI
                   const dayTasks = tasks.filter(t => 
                     t.shift === shift.id && 
                     isSameDay(new Date(t.startTime), date)
@@ -76,7 +82,7 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
                     <td key={dayIdx} className="border-[1.5px] border-black p-1 align-top bg-white min-h-[80px]">
                       <div className="flex flex-col gap-1.5">
                         {dayTasks.map(task => (
-                          <div key={task.id} className="border-[1px] border-black p-1.5 rounded-sm bg-gray-50 flex flex-col gap-0.5 shadow-sm">
+                          <div key={task.id} className="border-[1px] border-black p-1.5 rounded-sm bg-gray-50 flex flex-col gap-0.5">
                             <div className="font-black uppercase text-[8px] leading-none border-b border-black/10 pb-1 mb-0.5 truncate">
                               {task.name}
                             </div>
@@ -84,22 +90,6 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
                               <span className="truncate max-w-[35%]">👤 {task.responsible}</span>
                               <span className="whitespace-nowrap">🕒 {format(parseISO(task.startTime), 'HH:mm')}</span>
                               <span className="whitespace-nowrap">🔥 {formatDuration(task.cookTime)}</span>
-                            </div>
-                            <div className="flex justify-between text-[6.5px] font-bold opacity-70 border-t border-black/5 pt-0.5 mt-0.5">
-                              <span>🔪 P:{task.prepTime}m</span>
-                              <span>📦 C:{task.packingTime}m</span>
-                            </div>
-                            {task.comments && (
-                              <div className="text-[6px] leading-[1.1] italic text-gray-700 mt-0.5 pt-0.5 border-t border-dotted border-black/10 whitespace-pre-wrap">
-                                <span className="font-black not-italic text-[5.5px] opacity-40 uppercase">Recette: </span>
-                                {task.comments}
-                              </div>
-                            )}
-                            <div className="mt-1 pt-0.5 border-t border-black/5">
-                              <div className="flex items-end gap-1">
-                                <span className="text-[5.5px] font-black uppercase opacity-40 leading-none">Obs:</span>
-                                <div className="flex-1 border-b border-dotted border-black/30 h-[8px]"></div>
-                              </div>
                             </div>
                           </div>
                         ))}
@@ -111,66 +101,54 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
             ))}
           </tbody>
         </table>
-
-        <div className="mt-4 grid grid-cols-4 gap-4">
-          <div className="col-span-3 bg-black text-white p-2 rounded-sm flex items-center justify-between">
-            <div className="text-[7.5px] font-bold uppercase leading-tight">
-              Alerte HACCP : Tout produit non étiqueté sera jeté. <br/> Respect strict des temps de refroidissement ( &lt; 10°C en 120 min).
-            </div>
-            <div className="text-right border-l border-white/20 pl-4">
-              <span className="text-[8px] font-black uppercase">Validation Direction :</span>
-              <div className="h-4 w-24 border-b border-white mt-0.5 opacity-30"></div>
-            </div>
-          </div>
-          <div className="col-span-1 border-[1.5px] border-black p-1 text-[7px] font-black uppercase text-center flex items-center justify-center">
-            Document Contrôlé le {format(new Date(), 'dd/MM/yyyy')}
-          </div>
-        </div>
       </section>
 
-      {/* SECTION 2 : FICHES DÉTAILLÉES */}
+      {/* SECTION 2 : FICHES DÉTAILLÉES (Une fiche = un bloc aéré) */}
       <section>
-        <div className="page-break-before-always h-1"></div>
         <h2 className="text-xl font-black uppercase border-b-4 border-black pb-1 mb-6">Détails des Fiches de Production</h2>
-        <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-6"> {/* Deux fiches par ligne pour plus d'espace */}
           {sortedTasks.map((task) => {
-            const startTime = parseISO(task.startTime);
-            const endTime = new Date(startTime.getTime() + (task.prepTime + task.cookTime + task.packingTime) * 60000);
-            const dlcDate = new Date(endTime.getTime() + (task.shelfLifeDays * 24 * 60 * 60 * 1000));
+            const expiry = calculateExpiry(task.startTime, task.cookTime, task.shelfLifeDays);
 
             return (
-              <div key={task.id} style={{ pageBreakInside: 'avoid' }} className="border-[2px] border-black rounded-lg overflow-hidden">
-                <div className="bg-gray-100 p-2 border-b-[2px] border-black flex justify-between items-center">
-                  <div className="font-black text-xs uppercase">{task.name}</div>
-                  <div className="text-[9px] font-bold uppercase">
-                    {format(startTime, 'EEEE dd MMMM', { locale: fr })} à {format(startTime, 'HH:mm')} | 👤 {task.responsible}
+              <div key={task.id} className="print-card border-[3px] border-black flex flex-col min-h-[120mm]">
+                <div className="bg-black text-white p-4 flex justify-between items-center">
+                  <div className="font-black text-lg uppercase leading-tight">{task.name}</div>
+                  <div className="text-right">
+                    <div className="text-[10px] font-bold uppercase opacity-70">Date de Prod</div>
+                    <div className="text-sm font-black">{format(parseISO(task.startTime), 'dd/MM/yyyy')}</div>
                   </div>
                 </div>
-                <div className="p-3 grid grid-cols-3 gap-4">
-                  <div className="col-span-1 text-[9px] space-y-1">
-                    <div className="flex justify-between border-b border-black/10 pb-1">
-                      <span className="font-black opacity-50 uppercase">Préparation</span>
-                      <span className="font-bold">{task.prepTime} min</span>
+
+                <div className="p-6 flex-1 flex flex-col">
+                  <div className="grid grid-cols-3 gap-4 mb-6 border-b-2 border-black pb-6 text-center">
+                    <div>
+                      <div className="text-[10px] font-black uppercase opacity-40">Préparation</div>
+                      <div className="text-2xl font-black">{task.prepTime}m</div>
                     </div>
-                    <div className="flex justify-between border-b border-black/10 pb-1">
-                      <span className="font-black opacity-50 uppercase">Cuisson</span>
-                      <span className="font-bold">{formatDuration(task.cookTime)}</span>
+                    <div className="border-x-2 border-black/10">
+                      <div className="text-[10px] font-black uppercase opacity-40">Cuisson</div>
+                      <div className="text-4xl font-black">{formatDuration(task.cookTime)}</div>
                     </div>
-                    <div className="flex justify-between border-b border-black/10 pb-1">
-                      <span className="font-black opacity-50 uppercase">Conditionnement</span>
-                      <span className="font-bold">{task.packingTime} min</span>
-                    </div>
-                    <div className="bg-black text-white p-1.5 mt-2 rounded-sm text-center">
-                      <div className="text-[7px] font-black opacity-60 uppercase">DLC Estimée</div>
-                      <div className="text-[9px] font-black">{format(dlcDate, 'dd/MM/yy HH:mm')}</div>
+                    <div>
+                      <div className="text-[10px] font-black uppercase opacity-40">Conditionnement</div>
+                      <div className="text-2xl font-black">{task.packingTime}m</div>
                     </div>
                   </div>
-                  <div className="col-span-2 text-[9px] bg-gray-50 p-2 rounded-sm border border-black/5">
-                    <div className="font-black uppercase opacity-30 text-[7px] mb-1">Commentaires & Instructions</div>
-                    <div className="italic leading-relaxed">{task.comments || "Aucune instruction."}</div>
-                    <div className="mt-4 border-t border-black/10 pt-2">
-                      <div className="font-black uppercase opacity-30 text-[7px] mb-2">Observations (manuscrit)</div>
-                      <div className="border-b border-dotted border-black/30 h-6"></div>
+
+                  <div className="mb-6 flex-1 bg-gray-50 p-4 border border-black/5">
+                    <div className="text-[10px] font-black uppercase opacity-30 mb-2">Instructions de Recette</div>
+                    <div className="text-sm italic whitespace-pre-wrap">{task.comments || "Aucune instruction spécifique."}</div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 items-end mt-auto">
+                    <div className="bg-gray-100 p-4 border-2 border-black">
+                      <div className="text-[10px] font-black uppercase opacity-50 mb-1">DLC (À consommer avant)</div>
+                      <div className="text-lg font-black">{format(expiry, 'dd/MM/yyyy HH:mm')}</div>
+                    </div>
+                    <div className="text-right pb-2">
+                      <div className="text-[9px] font-black uppercase opacity-30">Responsable</div>
+                      <div className="text-sm font-black uppercase">{task.responsible}</div>
                     </div>
                   </div>
                 </div>

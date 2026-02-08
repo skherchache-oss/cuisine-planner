@@ -105,7 +105,6 @@ const App: React.FC = () => {
   // --- LOGIQUE TACHES ---
   const handleAddTask = (dayIdx: number, shift: ShiftType) => {
     const dayDate = addDays(currentWeekStart, dayIdx);
-    // On fixe l'heure par défaut à 08:00 le jour sélectionné
     const dateAt8AM = format(setMinutes(setHours(dayDate, 8), 0), "yyyy-MM-dd'T'HH:mm");
     
     setModalInitialData({ 
@@ -163,14 +162,28 @@ const App: React.FC = () => {
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
     setIsGeneratingPdf(true);
+    
     const opt = { 
-      margin: 0, 
+      margin: [5, 5, 5, 5], 
       filename: `Cuisine_${weekLabel}.pdf`, 
-      image: { type: 'jpeg', quality: 1.0 }, 
-      html2canvas: { scale: 2, useCORS: true, width: 1122 }, 
+      image: { type: 'jpeg', quality: 0.98 }, 
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        width: 1122, // Largeur A4 paysage à 96 DPI
+        letterRendering: true
+      }, 
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
     };
-    try { await html2pdf().set(opt).from(printRef.current).save(); } finally { setIsGeneratingPdf(false); }
+
+    try { 
+      const element = printRef.current;
+      await html2pdf().set(opt).from(element).save(); 
+    } catch (err) {
+      console.error("PDF Error:", err);
+    } finally { 
+      setIsGeneratingPdf(false); 
+    }
   };
 
   const activeAlerts = tasks
@@ -220,9 +233,9 @@ const App: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center bg-gray-100 rounded-2xl p-1.5 shadow-inner border">
-              <button onClick={() => setWeekOffset(prev => prev - 1)} className="flex-1 py-2 font-black text-xl">‹</button>
-              <div className="flex-[3] text-center font-black text-xs uppercase text-gray-800">{weekLabel}</div>
-              <button onClick={() => setWeekOffset(prev => prev + 1)} className="flex-1 py-2 font-black text-xl">›</button>
+              <button onClick={() => setWeekOffset(prev => prev - 1)} className="flex-1 py-2 font-black text-xl hover:bg-white rounded-xl transition-colors">‹</button>
+              <div className="flex-[3] text-center font-black text-xs uppercase text-gray-800 tracking-widest">{weekLabel}</div>
+              <button onClick={() => setWeekOffset(prev => prev + 1)} className="flex-1 py-2 font-black text-xl hover:bg-white rounded-xl transition-colors">›</button>
             </div>
           </div>
         </div>
@@ -242,15 +255,15 @@ const App: React.FC = () => {
         
         {activeAlerts.length > 0 && (
           <div className="mt-8 space-y-3">
-            <h3 className="text-lg font-black">⏱️ Moniteur</h3>
+            <h3 className="text-lg font-black uppercase tracking-tighter">⏱️ Moniteur de Production</h3>
             {activeAlerts.map(alertTask => (
               <div key={alertTask.id} className={`p-4 rounded-2xl border-l-8 shadow-sm flex items-center justify-between bg-white ${alertTask.status === 'ongoing' ? 'border-orange-500' : 'border-blue-500'}`}>
                 <div className="flex flex-col">
                   <span className="font-black text-sm uppercase">{alertTask.name}</span>
-                  <span className="text-[10px] text-gray-400">👤 {alertTask.responsible}</span>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Responsable: {alertTask.responsible}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-xl font-black font-mono">{Math.floor(alertTask.remainingSeconds / 60)}:{String(alertTask.remainingSeconds % 60).padStart(2, '0')}</span>
+                  <span className="text-xl font-black font-mono text-gray-900">{Math.floor(alertTask.remainingSeconds / 60)}:{String(alertTask.remainingSeconds % 60).padStart(2, '0')}</span>
                 </div>
               </div>
             ))}
@@ -259,7 +272,7 @@ const App: React.FC = () => {
       </main>
 
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-xs px-4 z-40 no-print">
-        <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="w-full bg-gray-900 text-white py-4 rounded-2xl flex items-center justify-center gap-3 shadow-2xl font-black uppercase text-sm">
+        <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="w-full bg-gray-900 text-white py-4 rounded-2xl flex items-center justify-center gap-3 shadow-2xl font-black uppercase text-sm active:scale-95 transition-transform disabled:opacity-50">
           <span>{isGeneratingPdf ? '⏳' : '📄'}</span> {isGeneratingPdf ? 'Génération...' : 'Exporter PDF'}
         </button>
       </div>

@@ -14,6 +14,14 @@ interface WeeklyCalendarProps {
   weekStartDate: Date;
 }
 
+// Fonction utilitaire identique pour cohérence visuelle
+const formatDuration = (minutes: number) => {
+  if (minutes >= 60 && minutes % 15 === 0) {
+    return `${minutes / 60}h`;
+  }
+  return `${minutes}m`;
+};
+
 const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
   tasks,
   onAddTask,
@@ -36,7 +44,6 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
               isToday ? 'border-blue-500 bg-blue-50/30' : 'border-gray-200 bg-white'
             } overflow-hidden shadow-sm`}
           >
-            {/* Header du jour */}
             <div className={`px-5 py-4 flex justify-between items-center ${isToday ? 'bg-blue-500 text-white' : 'bg-gray-50 text-gray-900'}`}>
               <div className="flex flex-col">
                 <span className="text-xs font-black uppercase tracking-widest opacity-80">{dayName}</span>
@@ -45,10 +52,8 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
               {isToday && <span className="bg-white text-blue-600 text-[10px] font-black px-2 py-1 rounded-full uppercase">Aujourd'hui</span>}
             </div>
 
-            {/* Grille des shifts */}
             <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               {shifts.map((shift) => {
-                // CORRECTION : Filtrage par date exacte pour éviter les répétitions hebdomadaires
                 const shiftTasks = tasks.filter(
                   (t) => isSameDay(new Date(t.startTime), currentDayDate) && t.shift === shift
                 );
@@ -91,7 +96,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                                 👤 {task.responsible}
                               </span>
                               <span className="text-[10px] font-black text-blue-600">
-                                {task.cookTime} min
+                                🔥 {formatDuration(task.cookTime)}
                               </span>
                             </div>
                           </div>
