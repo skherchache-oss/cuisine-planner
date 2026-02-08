@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { format, addWeeks, startOfWeek, addDays, setHours, setMinutes, startOfDay, parseISO } from 'date-fns';
-import { fr } from 'date-fns/locale'; // Import du pack de langue français
+import { fr } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -35,7 +35,7 @@ const App: React.FC = () => {
   const currentWeekStart = startOfDay(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }));
   const currentWeekEnd = addDays(currentWeekStart, 4);
   
-  // Formatage forcé en Français pour éviter le mélange
+  // Formatage pour l'affichage header
   const weekLabel = `Semaine du ${format(currentWeekStart, 'dd MMM', { locale: fr })} au ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
 
   useEffect(() => {
@@ -53,9 +53,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(new Date());
-      if (isAlertsEnabled) {
-        checkTasksForAlerts(tasks);
-      }
+      if (isAlertsEnabled) checkTasksForAlerts(tasks);
     }, 60000); 
     return () => clearInterval(interval);
   }, [tasks, isAlertsEnabled]);
@@ -68,8 +66,6 @@ const App: React.FC = () => {
       if (permission === 'granted') {
         setIsAlertsEnabled(true);
         new Notification("BISTROT M", { body: "Alertes activées ✅" });
-      } else {
-        alert("Permission refusée. Activez les notifications dans votre navigateur.");
       }
     } else {
       setIsAlertsEnabled(false);
@@ -81,7 +77,7 @@ const App: React.FC = () => {
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     const link = document.createElement('a');
     link.setAttribute('href', dataUri);
-    link.setAttribute('download', `sauvegarde-planning-${format(new Date(), 'dd-MM-yy')}.json`);
+    link.setAttribute('download', `sauvegarde-BM-${format(new Date(), 'dd-MM-yy')}.json`);
     link.click();
   };
 
@@ -91,11 +87,7 @@ const App: React.FC = () => {
     reader.onload = (e) => {
       try {
         const imported = JSON.parse(e.target?.result as string);
-        if (Array.isArray(imported)) { 
-          setTasks(imported); 
-          setIsSettingsOpen(false); 
-          alert('Importation réussie !');
-        }
+        if (Array.isArray(imported)) { setTasks(imported); setIsSettingsOpen(false); }
       } catch (err) { alert('Fichier invalide'); }
     };
     reader.readAsText(event.target.files[0]);
@@ -109,16 +101,56 @@ const App: React.FC = () => {
     setIsModalOpen(false);
   };
 
+  // --- LOGIQUE EXPORT PDF OPTIMISÉE ---
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
     setIsGeneratingPdf(true);
+    
+    // On laisse un petit délai pour le rendu
+    await new Promise(resolve => setTimeout(resolve, 300));
+
     try {
       const element = printRef.current;
-      const canvas = await html2canvas(element, { scale: 2, windowWidth: 1200, height: element.scrollHeight, useCORS: true });
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 297, (canvas.height * 297) / canvas.width);
-      pdf.save(`PLANNING-${format(currentWeekStart, 'dd-MM')}.pdf`);
-    } catch (e) { console.error(e); } finally { setIsGeneratingPdf(false); }
+      const canvas = await html2canvas(element, { 
+        scale: 2, 
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        width: 1200, // Largeur fixe pour garantir le ratio paysage
+        onclone: (clonedDoc) => {
+          // Force l'élément cloné à être visible pour la capture
+          const el = clonedDoc.getElementById('print-area');
+          if (el) el.style.display = 'block';
+        }
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const pdf = new jsPDF({ 
+        orientation: 'landscape', 
+        unit: 'mm', 
+        format: 'a4' 
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgProps = pdf.getImageProperties(imgData);
+      const contentHeightInPdf = (imgProps.height * pdfWidth) / imgProps.width;
+
+      // Centrage vertical si le contenu est plus court que la page
+      const positionY = contentHeightInPdf < pdfHeight ? (pdfHeight - contentHeightInPdf) / 2 : 0;
+
+      pdf.addImage(imgData, 'JPEG', 0, positionY, pdfWidth, contentHeightInPdf);
+      
+      // Nom du fichier personnalisé : planning BM - semaine dd mm dd mm
+      const fileName = `planning BM - semaine ${format(currentWeekStart, 'dd MM')} ${format(currentWeekEnd, 'dd MM')}.pdf`;
+      pdf.save(fileName);
+      
+    } catch (e) { 
+      console.error("Erreur PDF:", e); 
+      alert("Erreur lors de la génération du PDF.");
+    } finally { 
+      setIsGeneratingPdf(false); 
+    }
   };
 
   return (
@@ -131,35 +163,23 @@ const App: React.FC = () => {
       <header className="bg-white border-b-2 border-slate-200 sticky top-0 z-[100] shadow-sm">
         <div className="max-w-7xl mx-auto px-3 py-4 md:py-6 flex flex-col gap-4">
           <div className="flex items-center justify-between gap-2">
-            
-            {/* SÉLECTEUR DE SEMAINE - TEXTE 100% FRANCAIS */}
             <div className="flex-1 flex items-center bg-slate-900 rounded-3xl p-1 shadow-xl max-w-[70%]">
               <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
                 <span className="text-xl font-bold">‹</span>
               </button>
-              
               <div className="flex-1 text-center py-1">
-                <h1 className="text-white font-black text-[11px] md:text-base uppercase tracking-tight leading-tight px-1">
-                  {weekLabel}
-                </h1>
+                <h1 className="text-white font-black text-[11px] md:text-base uppercase tracking-tight leading-tight px-1">{weekLabel}</h1>
               </div>
-
               <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
                 <span className="text-xl font-bold">›</span>
               </button>
             </div>
 
             <div className="flex items-center gap-2">
-              <button 
-                onClick={handleToggleAlerts}
-                className={`w-14 h-14 flex flex-col items-center justify-center rounded-[1.5rem] border-2 transition-all shadow-md active:scale-75 ${
-                  isAlertsEnabled ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-white border-slate-200 text-slate-400'
-                }`}
-              >
+              <button onClick={handleToggleAlerts} className={`w-14 h-14 flex flex-col items-center justify-center rounded-[1.5rem] border-2 transition-all shadow-md active:scale-75 ${isAlertsEnabled ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-white border-slate-200 text-slate-400'}`}>
                 <span className="text-xl">{isAlertsEnabled ? '🔔' : '🔕'}</span>
                 <span className="text-[7px] font-black mt-0.5">{isAlertsEnabled ? 'ACTIF' : 'OFF'}</span>
               </button>
-
               <button onClick={() => setIsSettingsOpen(true)} className="w-14 h-14 flex items-center justify-center rounded-[1.5rem] border-2 bg-white border-slate-200 text-slate-700 shadow-md active:scale-75">
                 <span className="text-2xl">⚙️</span>
               </button>
@@ -202,8 +222,11 @@ const App: React.FC = () => {
         </button>
       </div>
 
-      <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '297mm' }}>
-        <div ref={printRef}><PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} /></div>
+      {/* ZONE DE CAPTURE PDF - CACHÉE MAIS OPTIMISÉE */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <div ref={printRef} id="print-area" style={{ width: '1200px', backgroundColor: 'white' }}>
+          <PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
+        </div>
       </div>
 
       <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveTask} initialTask={editingTask || modalInitialData} />
