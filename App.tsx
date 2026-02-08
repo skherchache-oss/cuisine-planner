@@ -24,21 +24,31 @@ const App: React.FC = () => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [notifPermission, setNotifPermission] = useState<string>('default');
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showSettings, setShowSettings] = useState(false);
+  
   const printRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
 
   const currentWeekStart = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 });
   const currentWeekEnd = addDays(currentWeekStart, 4);
   const weekLabel = `${format(currentWeekStart, 'dd MMM', { locale: fr })} - ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
 
+  // Fermer le menu si on clique ailleurs
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setShowSettings(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   useEffect(() => {
     const saved = localStorage.getItem('cuisine_tasks');
     if (saved) {
-      try {
-        setTasks(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to load tasks", e);
-      }
+      try { setTasks(JSON.parse(saved)); } catch (e) { console.error("Failed to load tasks", e); }
     }
     setNotifPermission(getNotificationStatus());
   }, []);
@@ -49,8 +59,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = new Date();
-      setCurrentTime(now);
+      setCurrentTime(new Date());
       checkTasksForAlerts(tasks);
     }, 1000); 
     return () => clearInterval(interval);
@@ -59,11 +68,11 @@ const App: React.FC = () => {
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(tasks, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const exportFileDefaultName = `planning_cuisine_${format(new Date(), 'dd-MM-yyyy')}.json`;
     const linkElement = document.createElement('a');
     linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.setAttribute('download', `backup_planning_${format(new Date(), 'dd-MM-yyyy')}.json`);
     linkElement.click();
+    setShowSettings(false);
   };
 
   const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,23 +82,20 @@ const App: React.FC = () => {
     reader.onload = (e) => {
       try {
         const json = JSON.parse(e.target?.result as string);
-        if (Array.isArray(json)) {
-          if (window.confirm("Importer ces données ? Cela remplacera votre planning actuel.")) {
-            setTasks(json);
-          }
+        if (Array.isArray(json) && window.confirm("Remplacer tout le planning par ce fichier ?")) {
+          setTasks(json);
+          setShowSettings(false);
         }
-      } catch (err) {
-        alert("Erreur JSON.");
-      }
+      } catch (err) { alert("Erreur fichier"); }
     };
     reader.readAsText(file);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleResetAll = () => {
-    if (window.confirm("⚠️ Supprimer TOUTES les fiches ?") && window.confirm("Action définitive. Confirmer ?")) {
+    if (window.confirm("🗑️ Supprimer TOUTES les données ?") && window.confirm("Confirmation finale ?")) {
       setTasks([]);
       localStorage.removeItem('cuisine_tasks');
+      setShowSettings(false);
     }
   };
 
@@ -106,29 +112,10 @@ const App: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleEditTask = (task: PrepTask) => { setEditingTask(task); setIsModalOpen(true); };
-  const handleDuplicateTask = (task: PrepTask) => { setTasks(prev => [...prev, { ...task, id: crypto.randomUUID(), name: `${task.name} (Copie)` }]); };
-  const handleSaveTask = (task: PrepTask) => {
-    if (editingTask) setTasks(prev => prev.map(t => t.id === task.id ? task : t));
-    else setTasks(prev => [...prev, task]);
-    setIsModalOpen(false);
-  };
-  const handleDeleteTask = (id: string) => setTasks(prev => prev.filter(t => t.id !== id));
-  const handleMoveTask = (taskId: string, newDate: Date, newShift: ShiftType) => {
-    setTasks(prev => prev.map(task => {
-      if (task.id === taskId) {
-        const oldStart = parseISO(task.startTime);
-        const updatedStart = setMinutes(setHours(newDate, oldStart.getHours()), oldStart.getMinutes());
-        return { ...task, startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"), shift: newShift, dayOfWeek: (updatedStart.getDay() + 6) % 7 };
-      }
-      return task;
-    }));
-  };
-
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
     setIsGeneratingPdf(true);
-    const opt = { margin: 0, filename: `Cuisine_${weekLabel}.pdf`, image: { type: 'jpeg', quality: 1.0 }, html2canvas: { scale: 2, useCORS: true, width: 1122 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } };
+    const opt = { margin: 0, filename: `Planning_${weekLabel}.pdf`, image: { type: 'jpeg', quality: 1.0 }, html2canvas: { scale: 2, useCORS: true, width: 1122 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } };
     try { await html2pdf().set(opt).from(printRef.current).save(); } finally { setIsGeneratingPdf(false); }
   };
 
@@ -143,43 +130,51 @@ const App: React.FC = () => {
       else if (isStartingSoon) { status = 'soon'; remainingSeconds = Math.max(0, Math.floor((start.getTime() - currentTime.getTime()) / 1000)); }
       return { ...task, status, remainingSeconds };
     })
-    .filter(t => t.status !== 'none')
-    .sort((a, b) => a.remainingSeconds - b.remainingSeconds);
+    .filter(t => t.status !== 'none');
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
-      <header className="no-print bg-white border-b shadow-sm sticky top-0 z-30 py-2 sm:py-3">
+    <div className="min-h-screen bg-gray-50 pb-28">
+      <header className="no-print bg-white border-b shadow-sm sticky top-0 z-40 py-3">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex flex-col gap-3">
-            {/* Ligne 1: Titre & Notifications */}
+          <div className="flex flex-col gap-4">
+            {/* Ligne 1: Logo & Menu secondaire */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="bg-blue-600 w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-lg text-white font-black text-lg shadow-sm">🍽️</div>
-                <h1 className="font-black text-gray-900 text-lg sm:text-xl tracking-tighter">Cuisine Planner</h1>
+                <div className="bg-blue-600 w-9 h-9 flex items-center justify-center rounded-xl text-white shadow-md">🍽️</div>
+                <h1 className="font-black text-gray-900 text-lg tracking-tighter uppercase">Cuisine Planner</h1>
               </div>
-              
-              <button onClick={handleRequestPermission} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${notifPermission === 'granted' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-amber-50 border-amber-200 text-amber-700 animate-pulse'}`}>
-                <span>{notifPermission === 'granted' ? '🔔' : '🔕'}</span>
-                <span className="hidden xs:inline">{notifPermission === 'granted' ? 'Alertes' : 'Activer'}</span>
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button onClick={handleRequestPermission} className={`p-2 rounded-full border transition-all ${notifPermission === 'granted' ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200 animate-pulse'}`}>
+                  {notifPermission === 'granted' ? '🔔' : '🔕'}
+                </button>
+                
+                {/* Menu Options */}
+                <div className="relative" ref={settingsRef}>
+                  <button onClick={() => setShowSettings(!showSettings)} className="bg-gray-100 p-2 rounded-full border border-gray-200 hover:bg-gray-200 transition-all font-bold text-sm">
+                    ⚙️ <span className="hidden sm:inline ml-1">Options</span>
+                  </button>
+
+                  {showSettings && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 z-50 overflow-hidden animate-in fade-in zoom-in duration-200">
+                      <p className="text-[10px] font-black text-gray-400 uppercase px-3 py-2 border-b mb-1 tracking-widest">Données</p>
+                      <button onClick={handleExportJSON} className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl flex items-center gap-3 transition-colors"><span>📤</span> Sauvegarder</button>
+                      <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-xl flex items-center gap-3 transition-colors"><span>📥</span> Restaurer</button>
+                      <button onClick={handleResetAll} className="w-full text-left px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl flex items-center gap-3 transition-colors"><span>🗑️</span> Vider tout</button>
+                      <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleImportJSON} />
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Ligne 2: Navigation & Actions */}
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-2 sm:pt-0 sm:border-t-0">
-              {/* Navigation Semaine */}
-              <div className="flex items-center bg-gray-100 rounded-lg p-1 shadow-inner border border-gray-200 flex-1 sm:flex-none justify-between sm:justify-start">
-                <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-8 h-8 hover:bg-white rounded-md transition-all font-black">‹</button>
-                <span className="px-2 text-[10px] font-black min-w-[110px] text-center text-gray-700 uppercase">{weekLabel}</span>
-                <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-8 h-8 hover:bg-white rounded-md transition-all font-black">›</button>
+            {/* Ligne 2: Navigation Semaine (Grosse zone de clic) */}
+            <div className="flex items-center bg-gray-100 rounded-2xl p-1.5 shadow-inner border border-gray-200">
+              <button onClick={() => setWeekOffset(prev => prev - 1)} className="flex-1 py-2 hover:bg-white rounded-xl transition-all font-black text-xl">‹</button>
+              <div className="flex-[3] text-center">
+                <span className="text-xs font-black text-gray-800 uppercase tracking-tighter">{weekLabel}</span>
               </div>
-
-              {/* Actions Données */}
-              <div className="flex bg-gray-100 rounded-lg p-1 border border-gray-200 shadow-inner gap-1">
-                <button onClick={handleExportJSON} className="px-2 py-1 text-[9px] font-black uppercase text-gray-500 hover:text-blue-600 transition-colors" title="Export">📤 <span className="hidden xs:inline">Export</span></button>
-                <button onClick={() => fileInputRef.current?.click()} className="px-2 py-1 text-[9px] font-black uppercase text-gray-500 hover:text-green-600 transition-colors" title="Import">📥 <span className="hidden xs:inline">Import</span></button>
-                <button onClick={handleResetAll} className="px-2 py-1 text-[9px] font-black uppercase text-gray-400 hover:text-red-600 transition-colors" title="Reset">🗑️ <span className="hidden xs:inline">Reset</span></button>
-                <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleImportJSON} />
-              </div>
+              <button onClick={() => setWeekOffset(prev => prev + 1)} className="flex-1 py-2 hover:bg-white rounded-xl transition-all font-black text-xl">›</button>
             </div>
           </div>
         </div>
@@ -187,27 +182,28 @@ const App: React.FC = () => {
 
       <main className="no-print max-w-7xl mx-auto px-4 mt-6">
         <div className="mb-6">
-          <h2 className="text-2xl font-black text-gray-900 tracking-tighter">Planning</h2>
-          <p className="text-blue-500 font-bold uppercase text-[10px] tracking-widest mt-1">
-            Production : {activeAlerts.filter(a => a.status === 'ongoing').length} en cours
-          </p>
+          <h2 className="text-3xl font-black text-gray-900 tracking-tighter">Planning</h2>
+          <div className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black uppercase mt-2 tracking-widest">
+            {activeAlerts.length} production{activeAlerts.length > 1 ? 's' : ''} active{activeAlerts.length > 1 ? 's' : ''}
+          </div>
         </div>
 
         <WeeklyCalendar tasks={tasks} currentTime={currentTime} onAddTask={handleAddTask} onEditTask={handleEditTask} onDeleteTask={handleDeleteTask} onDuplicateTask={handleDuplicateTask} onMoveTask={handleMoveTask} weekStartDate={currentWeekStart} />
-
+        
+        {/* Moniteur Mobile-First */}
         {activeAlerts.length > 0 && (
-          <div className="mt-8 bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100">
-            <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">⏱️ Moniteur</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="mt-8">
+            <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">⏱️ Moniteur Actif</h3>
+            <div className="space-y-3">
               {activeAlerts.map(alertTask => (
-                <div key={alertTask.id} className={`p-4 rounded-xl border-2 flex flex-col justify-between ${alertTask.status === 'ongoing' ? 'border-orange-200 bg-orange-50' : 'border-blue-100 bg-blue-50'}`}>
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="font-black text-xs uppercase truncate pr-2">{alertTask.name}</span>
-                    <span className="text-[10px] font-bold text-gray-400 whitespace-nowrap">👤 {alertTask.responsible}</span>
+                <div key={alertTask.id} className={`p-4 rounded-2xl border-l-8 shadow-sm flex items-center justify-between ${alertTask.status === 'ongoing' ? 'border-orange-500 bg-white' : 'border-blue-500 bg-white'}`}>
+                  <div className="flex flex-col">
+                    <span className="font-black text-sm uppercase">{alertTask.name}</span>
+                    <span className="text-[10px] font-bold text-gray-400">👤 {alertTask.responsible}</span>
                   </div>
-                  <div className="flex justify-between items-end">
-                    <span className="text-[9px] font-black uppercase text-gray-400">{alertTask.status === 'ongoing' ? 'Fin' : 'Début'} :</span>
-                    <span className="text-base font-black font-mono">{Math.floor(alertTask.remainingSeconds / 60)}m {alertTask.remainingSeconds % 60}s</span>
+                  <div className="text-right">
+                    <span className="block text-[9px] font-black text-gray-400 uppercase leading-none">{alertTask.status === 'ongoing' ? 'Prêt dans' : 'Début dans'}</span>
+                    <span className="text-xl font-black font-mono text-gray-800">{Math.floor(alertTask.remainingSeconds / 60)}:{String(alertTask.remainingSeconds % 60).padStart(2, '0')}</span>
                   </div>
                 </div>
               ))}
@@ -216,11 +212,17 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Floating Action PDF */}
-      <div className="fixed bottom-6 right-6 z-50 no-print">
-        <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-gray-900 hover:bg-blue-600 text-white w-12 h-12 sm:w-auto sm:px-5 sm:h-12 rounded-full sm:rounded-xl flex items-center justify-center gap-2 shadow-xl transition-all active:scale-95 disabled:opacity-50">
-          <span>{isGeneratingPdf ? '⏳' : '📄'}</span>
-          <span className="hidden sm:inline font-black uppercase text-[10px] tracking-widest">PDF</span>
+      {/* BOUTON PDF : Le plus important, bien visible en bas */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-xs px-4 z-40 no-print">
+        <button 
+          onClick={handleDownloadPDF} 
+          disabled={isGeneratingPdf} 
+          className="w-full bg-gray-900 text-white py-4 rounded-2xl flex items-center justify-center gap-3 shadow-2xl active:scale-95 transition-all disabled:opacity-50"
+        >
+          <span className="text-xl">{isGeneratingPdf ? '⏳' : '📄'}</span>
+          <span className="font-black uppercase text-sm tracking-widest">
+            {isGeneratingPdf ? 'Génération...' : 'Exporter en PDF'}
+          </span>
         </button>
       </div>
 
