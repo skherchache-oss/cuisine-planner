@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-// AJOUT DES EXTENSIONS POUR LE CHARGEMENT BROWSER
+import React, { useState, useRef } from 'react';
 import { PrepTask, ShiftType } from '../types.ts';
 import { SHIFTS, CATEGORY_COLORS } from '../constants.ts';
 import { formatDuration } from '../utils.ts';
@@ -29,9 +28,13 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
 }) => {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ dayIdx: number, shiftId: string } | null>(null);
+  
+  // Refs pour le suivi tactile
+  const touchScrollPos = useRef({ x: 0, y: 0 });
 
   const weekDates = Array.from({ length: 5 }, (_, i) => addDays(weekStartDate, i));
 
+  // --- LOGIQUE MOUSE (DESKTOP) ---
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     setDraggedTaskId(taskId);
     e.dataTransfer.setData('taskId', taskId);
@@ -51,15 +54,36 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
     setDropTarget({ dayIdx, shiftId });
   };
 
-  const handleDragLeave = () => {
-    setDropTarget(null);
-  };
-
   const handleDrop = (e: React.DragEvent, dayIdx: number, shiftId: ShiftType) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
     if (taskId) {
       onMoveTask(taskId, weekDates[dayIdx], shiftId);
+    }
+    setDropTarget(null);
+    setDraggedTaskId(null);
+  };
+
+  // --- LOGIQUE TOUCH (MOBILE) ---
+  const handleTouchStart = (taskId: string) => {
+    setDraggedTaskId(taskId);
+    if (window.navigator.vibrate) window.navigator.vibrate(40); // Feedback haptique
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const zone = el?.closest('[data-zone-id]');
+    
+    if (zone) {
+      const [dayIdx, shiftId] = zone.getAttribute('data-zone-id')!.split('|');
+      setDropTarget({ dayIdx: parseInt(dayIdx), shiftId });
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent, taskId: string) => {
+    if (dropTarget) {
+      onMoveTask(taskId, weekDates[dropTarget.dayIdx], dropTarget.shiftId as ShiftType);
     }
     setDropTarget(null);
     setDraggedTaskId(null);
@@ -101,8 +125,9 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                 return (
                   <td 
                     key={dayIdx} 
+                    data-zone-id={`${dayIdx}|${shift.id}`}
                     onDragOver={(e) => handleDragOver(e, dayIdx, shift.id)}
-                    onDragLeave={handleDragLeave}
+                    onDragLeave={() => setDropTarget(null)}
                     onDrop={(e) => handleDrop(e, dayIdx, shift.id)}
                     className={`p-2 border-r align-top relative transition-all duration-200 ${
                       isOver ? 'bg-blue-100/50 ring-2 ring-inset ring-blue-400' : 'bg-white'
@@ -122,7 +147,10 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                             draggable="true"
                             onDragStart={(e) => handleDragStart(e, task.id)}
                             onDragEnd={() => setDraggedTaskId(null)}
-                            className={`relative mb-1 group/task ${isBeingDragged ? 'opacity-30' : ''}`}
+                            onTouchStart={() => handleTouchStart(task.id)}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={(e) => handleTouchEnd(e, task.id)}
+                            className={`relative mb-1 group/task task-card-mobile ${isBeingDragged ? 'opacity-30 scale-95 z-0' : 'z-10'}`}
                           >
                             <div className="absolute -top-1.5 -right-1.5 flex gap-1 z-50 opacity-0 group-hover/task:opacity-100 transition-opacity">
                               <button 
