@@ -32,7 +32,6 @@ const App: React.FC = () => {
   const currentWeekEnd = addDays(currentWeekStart, 4);
   const weekLabel = `${format(currentWeekStart, 'dd MMM', { locale: fr })} - ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
 
-  // CHARGEMENT INITIAL & PERMISSIONS
   useEffect(() => {
     const saved = localStorage.getItem('cuisine_tasks');
     if (saved) {
@@ -41,12 +40,10 @@ const App: React.FC = () => {
     setNotifPermission(getNotificationStatus());
   }, []);
 
-  // SAUVEGARDE AUTO
   useEffect(() => {
     localStorage.setItem('cuisine_tasks', JSON.stringify(tasks));
   }, [tasks]);
 
-  // MONITORING TEMPS RÉEL ET ALERTES
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date();
@@ -65,42 +62,20 @@ const App: React.FC = () => {
     if (!printRef.current) return;
     setIsGeneratingPdf(true);
     try {
-      const element = printRef.current;
-      const container = element.parentElement;
-      if (container) {
-        container.style.left = '0';
-        container.style.opacity = '1';
-      }
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-      });
+      const canvas = await html2canvas(printRef.current, { scale: 2, useCORS: true });
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210);
-      const startDay = format(currentWeekStart, 'dd');
-      pdf.save(`Planning-BistrotM-Semaine-${startDay}.pdf`);
-    } catch (error) {
-      console.error("Erreur PDF:", error);
-    } finally {
-      if (printRef.current?.parentElement) {
-        printRef.current.parentElement.style.left = '-9999px';
-        printRef.current.parentElement.style.opacity = '0';
-      }
-      setIsGeneratingPdf(false);
-    }
+      pdf.save(`Planning-Semaine-${format(currentWeekStart, 'dd-MM')}.pdf`);
+    } catch (e) { console.error(e); } finally { setIsGeneratingPdf(false); }
   };
 
-  // LOGIQUE DES TÂCHES
   const handleAddTask = (dayIdx: number, shift: ShiftType) => {
     const dayDate = addDays(currentWeekStart, dayIdx);
-    const dateAt8AM = format(setMinutes(setHours(dayDate, 8), 0), "yyyy-MM-dd'T'HH:mm");
     setModalInitialData({ 
-      id: undefined, name: '', dayOfWeek: dayIdx, shift, startTime: dateAt8AM,
-      responsible: STAFF_LIST[0], prepTime: 15, cookTime: 60, packingTime: 10, shelfLifeDays: 3, comments: ''
+      id: undefined, name: '', dayOfWeek: dayIdx, shift, 
+      startTime: format(setMinutes(setHours(dayDate, 8), 0), "yyyy-MM-dd'T'HH:mm"),
+      responsible: STAFF_LIST[0], prepTime: 15, cookTime: 60, packingTime: 10, shelfLifeDays: 3
     });
     setEditingTask(undefined);
     setIsModalOpen(true);
@@ -114,59 +89,25 @@ const App: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const handleDuplicateTask = (task: PrepTask) => {
-    const duplicatedTask: PrepTask = { ...task, id: crypto.randomUUID(), name: `${task.name} (Copie)` };
-    setTasks(prev => [...prev, duplicatedTask]);
-  };
-
-  const handleDeleteTask = (id: string) => {
-    if(confirm("Supprimer cette tâche ?")) {
-      setTasks(prev => prev.filter(t => t.id !== id));
-    }
-  };
-
   const handleMoveTask = (taskId: string, newDate: Date, newShift: ShiftType) => {
     setTasks(prev => prev.map(task => {
       if (task.id === taskId) {
         const oldStart = parseISO(task.startTime);
         const updatedStart = setMinutes(setHours(newDate, oldStart.getHours()), oldStart.getMinutes());
-        return {
-          ...task,
-          startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"),
-          shift: newShift,
-          dayOfWeek: (updatedStart.getDay() + 6) % 7 
-        };
+        return { ...task, startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"), shift: newShift, dayOfWeek: (updatedStart.getDay() + 6) % 7 };
       }
       return task;
     }));
   };
 
-  // GESTION DES DONNÉES
   const handleExportData = () => {
-    const dataStr = JSON.stringify(tasks, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const dataBlob = new Blob([JSON.stringify(tasks, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `cuisine_planner_backup_${format(new Date(), 'yyyy-MM-dd')}.json`;
+    link.download = `backup_cuisine.json`;
     link.click();
     setIsSettingsOpen(false);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string);
-        if (Array.isArray(json) && confirm(`Importer ${json.length} fiches ?`)) {
-          setTasks(json);
-          setIsSettingsOpen(false);
-        }
-      } catch (err) { alert("Format invalide."); }
-    };
-    reader.readAsText(file);
   };
 
   const activeAlerts = tasks
@@ -190,105 +131,95 @@ const App: React.FC = () => {
     .sort((a, b) => a.remainingSeconds - b.remainingSeconds);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 md:pb-20 overflow-x-hidden">
-      {/* Barre supérieure noire : BISTROT M à gauche */}
-      <div className="no-print bg-gray-900 text-white py-1.5 px-6 flex justify-between items-center text-[9px] font-black uppercase border-b border-gray-800">
+    <div className="min-h-screen bg-gray-50 pb-24 overflow-x-hidden flex flex-col">
+      {/* Top Brand Bar */}
+      <div className="no-print bg-gray-900 text-white py-1.5 px-4 flex justify-between items-center text-[8px] font-black uppercase border-b border-gray-800">
         <span className="tracking-[0.4em]">BISTROT M</span>
         <span className="tracking-[0.4em] opacity-40">PRODUCTION SYSTEM v2.5</span>
       </div>
 
       <header className="no-print bg-white border-b shadow-sm sticky top-0 z-[60]">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
-          {/* Logo & Titre uniquement */}
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            <div className="bg-blue-600 w-9 h-9 flex items-center justify-center rounded-xl text-white font-black text-xl shadow-lg border border-white/20">🍽️</div>
-            <h1 className="font-black text-gray-900 text-sm sm:text-lg tracking-tight uppercase leading-none">
+        <div className="max-w-7xl mx-auto px-2 h-14 flex items-center justify-between gap-1">
+          {/* Logo & Titre (Compact sur mobile) */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="bg-blue-600 w-8 h-8 flex items-center justify-center rounded-lg text-white font-black text-lg shadow-md">🍽️</div>
+            <h1 className="font-black text-gray-900 text-xs sm:text-base tracking-tight uppercase leading-none">
               CUISINE PLANNER
             </h1>
           </div>
 
           {/* Navigation & Contrôles */}
-          <div className="flex items-center gap-2 sm:gap-4 flex-1 justify-end">
-            <div className="flex items-center bg-gray-50 rounded-2xl p-0.5 shadow-inner border border-gray-100">
-              <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-8 h-8 hover:bg-white rounded-xl font-black text-lg">‹</button>
-              <span className="px-3 text-[10px] font-black min-w-[120px] sm:min-w-[160px] text-center text-gray-700 uppercase">{weekLabel}</span>
-              <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-8 h-8 hover:bg-white rounded-xl font-black text-lg">›</button>
+          <div className="flex items-center gap-1 sm:gap-3 flex-1 justify-end">
+            <div className="flex items-center bg-gray-100 rounded-xl p-0.5">
+              <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-7 h-7 hover:bg-white rounded-lg font-black text-sm">‹</button>
+              <span className="px-1 text-[9px] font-black min-w-[90px] text-center text-gray-600 uppercase tracking-tighter">{weekLabel}</span>
+              <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-7 h-7 hover:bg-white rounded-lg font-black text-sm">›</button>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <button 
+              onClick={handleRequestPermission}
+              className={`w-8 h-8 flex items-center justify-center rounded-xl border transition-all ${
+                notifPermission === 'granted' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-white text-gray-300 border-gray-100'
+              }`}
+            >
+              {notifPermission === 'granted' ? '🔔' : '🔕'}
+            </button>
+            
+            <div className="relative">
               <button 
-                onClick={handleRequestPermission}
-                className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-all ${
-                  notifPermission === 'granted' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-white text-gray-300 border-gray-100'
-                }`}
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                className={`w-8 h-8 flex items-center justify-center rounded-xl border transition-all ${isSettingsOpen ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
               >
-                {notifPermission === 'granted' ? '🔔' : '🔕'}
+                <span className="text-sm">⚙️</span>
               </button>
-              
-              <div className="relative">
-                <button 
-                  onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                  className={`w-9 h-9 flex items-center justify-center rounded-xl border transition-all shadow-sm ${isSettingsOpen ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <span className="text-base">⚙️</span>
-                </button>
 
-                {isSettingsOpen && (
-                  <>
-                    <div className="fixed inset-0 z-[-1]" onClick={() => setIsSettingsOpen(false)} />
-                    <div className="absolute top-full right-0 mt-3 w-52 bg-white border border-gray-100 rounded-[1.5rem] shadow-2xl py-3 z-50">
-                      <div className="px-4 py-2 border-b border-gray-50 mb-2">
-                        <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">Base de données</span>
-                      </div>
-                      <button onClick={handleExportData} className="w-full text-left px-5 py-2.5 text-[11px] font-black text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-4 uppercase transition-colors">
-                        <span>📤</span> Exporter
-                      </button>
-                      <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-5 py-2.5 text-[11px] font-black text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-4 uppercase transition-colors">
-                        <span>📥</span> Importer
-                      </button>
-                      <div className="border-t border-gray-50 my-2"></div>
-                      <button onClick={() => { if(confirm("Reset complet ?")) setTasks([]); setIsSettingsOpen(false); }} className="w-full text-left px-5 py-2.5 text-[11px] font-black text-red-600 hover:bg-red-50 flex items-center gap-4 uppercase transition-colors">
-                        <span>🗑️</span> Réinitialiser
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+              {isSettingsOpen && (
+                <div className="absolute top-full right-0 mt-2 w-44 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-[70]">
+                  <button onClick={handleExportData} className="w-full text-left px-4 py-2 text-[10px] font-black text-gray-700 hover:bg-blue-50 flex items-center gap-3 uppercase">
+                    <span>📤</span> Exporter
+                  </button>
+                  <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-4 py-2 text-[10px] font-black text-gray-700 hover:bg-blue-50 flex items-center gap-3 uppercase">
+                    <span>📥</span> Importer
+                  </button>
+                  <button onClick={() => { if(confirm("Reset ?")) setTasks([]); setIsSettingsOpen(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black text-red-600 hover:bg-red-50 flex items-center gap-3 uppercase">
+                    <span>🗑️</span> Reset
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
       </header>
 
-      <main className="no-print max-w-7xl mx-auto px-4 mt-6">
-        <WeeklyCalendar 
-          tasks={tasks}
-          currentTime={currentTime}
-          onAddTask={handleAddTask}
-          onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
-          onDeleteTask={handleDeleteTask}
-          onDuplicateTask={handleDuplicateTask}
-          onMoveTask={handleMoveTask}
-          weekStartDate={currentWeekStart}
-        />
+      {/* Main Content - No Scroll Horizontal */}
+      <main className="no-print w-full max-w-7xl mx-auto px-1 sm:px-4 mt-4 flex-1">
+        <div className="w-full overflow-hidden">
+          <WeeklyCalendar 
+            tasks={tasks}
+            currentTime={currentTime}
+            onAddTask={handleAddTask}
+            onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
+            onDeleteTask={(id) => setTasks(prev => prev.filter(t => t.id !== id))}
+            onMoveTask={handleMoveTask}
+            weekStartDate={currentWeekStart}
+          />
+        </div>
         
+        {/* Moniteur Mobile friendly */}
         {activeAlerts.length > 0 && (
-          <div className="mt-12 mb-8">
-            <h3 className="text-[11px] font-black text-gray-400 mb-5 flex items-center gap-4 uppercase tracking-[0.3em]">
-              <span className="w-10 h-px bg-gray-200"></span>
-              Moniteur de Production
-              <span className="w-10 h-px bg-gray-200"></span>
+          <div className="mt-8 px-2">
+            <h3 className="text-[10px] font-black text-gray-400 mb-3 flex items-center gap-2 uppercase tracking-[0.2em]">
+              <span className="w-6 h-px bg-gray-200"></span> MONITOR <span className="w-6 h-px bg-gray-200"></span>
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="flex flex-col gap-2">
               {activeAlerts.map(alertTask => (
-                <div key={alertTask.id} className={`p-5 rounded-[2rem] border flex items-center gap-5 shadow-sm bg-white hover:shadow-md transition-all ${alertTask.status === 'ongoing' ? 'border-orange-200' : 'border-blue-100'}`}>
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0 ${alertTask.status === 'ongoing' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
-                    {alertTask.status === 'ongoing' ? '🔥' : '🕒'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-black text-[13px] uppercase truncate text-gray-900">{alertTask.name}</div>
-                    <div className="text-[10px] font-bold text-gray-400 uppercase mt-1">
-                      {alertTask.status === 'ongoing' ? 'Fini dans' : 'Prévu dans'} {Math.floor(alertTask.remainingSeconds / 60)} min
+                <div key={alertTask.id} className={`p-3 rounded-2xl border flex items-center gap-3 bg-white ${alertTask.status === 'ongoing' ? 'border-orange-200' : 'border-blue-100'}`}>
+                  <span className="text-xl">{alertTask.status === 'ongoing' ? '🔥' : '🕒'}</span>
+                  <div className="flex-1">
+                    <div className="font-black text-[11px] uppercase truncate">{alertTask.name}</div>
+                    <div className="text-[9px] font-bold text-gray-400 uppercase">
+                      {Math.floor(alertTask.remainingSeconds / 60)} min restantes
                     </div>
                   </div>
                 </div>
@@ -298,18 +229,19 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <div className="fixed bottom-6 right-6 z-40 no-print">
+      {/* FAB Floating Action Button */}
+      <div className="fixed bottom-4 right-4 z-40 no-print flex flex-col gap-2">
         <button 
           onClick={handleDownloadPDF}
           disabled={isGeneratingPdf}
-          className="bg-gray-900 hover:bg-blue-600 text-white px-10 h-16 rounded-[2rem] flex items-center gap-4 shadow-2xl transition-all disabled:opacity-50 group"
+          className="bg-gray-900 text-white p-4 rounded-full shadow-2xl transition-all active:scale-95 disabled:opacity-50 border border-white/20"
         >
-          <span className="text-3xl group-hover:scale-110 transition-transform">{isGeneratingPdf ? '⏳' : '📄'}</span> 
-          <span className="font-black uppercase text-[11px] tracking-widest">{isGeneratingPdf ? 'Génération...' : 'Exporter PDF Hebdo'}</span>
+          {isGeneratingPdf ? '⏳' : <span className="font-black text-[10px]">PDF</span>}
         </button>
       </div>
 
-      <div style={{ position: 'absolute', left: '-9999px', top: '0', width: '297mm', background: 'white', opacity: 0 }}>
+      {/* Hidden Print Area */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '297mm' }}>
         <div ref={printRef}>
           <PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
         </div>
