@@ -8,7 +8,7 @@ import { fr } from 'date-fns/locale';
 interface PrintLayoutProps {
   tasks: PrepTask[];
   weekLabel: string;
-  weekStartDate: Date | string; // Accepte les deux types au cas où
+  weekStartDate: Date | string;
 }
 
 const formatDuration = (minutes: number) => {
@@ -21,37 +21,34 @@ const formatDuration = (minutes: number) => {
 };
 
 const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDate }) => {
-  // SÉCURITÉ : On s'assure que weekStartDate est un objet Date valide et mis à 00:00
   const baseDate = typeof weekStartDate === 'string' ? parseISO(weekStartDate) : weekStartDate;
   const cleanStartDate = startOfDay(baseDate);
-
-  // Génération des 5 jours (Lundi à Vendredi)
   const weekDates = Array.from({ length: 5 }, (_, i) => addDays(cleanStartDate, i));
 
   return (
-    <div style={{ width: '1050px', backgroundColor: 'white', color: 'black', padding: '25px', fontFamily: 'Arial, sans-serif' }}>
+    // Wrapper à largeur fixe pour correspondre au ratio A4 Paysage (297mm)
+    <div style={{ width: '297mm', backgroundColor: 'white', color: 'black', padding: '10mm', boxSizing: 'border-box' }}>
       <style>{`
         @page { size: landscape; margin: 0; }
         .page-break { page-break-after: always; }
-        table { border-collapse: collapse; width: 100%; table-layout: fixed; border: 2px solid black; }
-        th, td { border: 1px solid black; word-wrap: break-word; overflow: hidden; }
-        .fiche-box { break-inside: avoid; border: 2px solid black; margin-bottom: 15px; page-break-inside: avoid; }
+        table { border-collapse: collapse; width: 100%; table-layout: fixed; border: 1.5pt solid black; }
+        th, td { border: 1pt solid black; word-wrap: break-word; overflow: hidden; }
+        .fiche-box { break-inside: avoid; border: 1.5pt solid black; margin-bottom: 10px; page-break-inside: avoid; }
       `}</style>
       
-      {/* --- PAGE 1 : LE PLANNING --- */}
       <section className="page-break">
-        <h1 style={{ fontSize: '24px', fontWeight: '900', borderBottom: '4px solid black', paddingBottom: '10px', marginBottom: '15px', textTransform: 'uppercase' }}>
-          Planning de Production : {weekLabel}
+        <h1 style={{ fontSize: '20pt', fontWeight: '900', borderBottom: '3pt solid black', paddingBottom: '5px', marginBottom: '15px', textTransform: 'uppercase' }}>
+          PRODUCTION : {weekLabel}
         </h1>
         
         <table>
           <thead>
-            <tr style={{ backgroundColor: '#f0f0f0' }}>
-              <th style={{ width: '80px', padding: '10px', fontSize: '10px' }}>SHIFT</th>
+            <tr style={{ backgroundColor: '#eeeeee' }}>
+              <th style={{ width: '50px', padding: '5px', fontSize: '8pt' }}>SHIFT</th>
               {weekDates.map(d => (
-                <th key={d.toISOString()} style={{ padding: '8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '10px', textTransform: 'uppercase' }}>{format(d, 'EEEE', { locale: fr })}</div>
-                  <div style={{ fontSize: '14px', fontWeight: '900' }}>{format(d, 'dd/MM')}</div>
+                <th key={d.toISOString()} style={{ padding: '5px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '8pt', textTransform: 'uppercase' }}>{format(d, 'EEEE', { locale: fr })}</div>
+                  <div style={{ fontSize: '12pt', fontWeight: '900' }}>{format(d, 'dd/MM')}</div>
                 </th>
               ))}
             </tr>
@@ -59,32 +56,26 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
           <tbody>
             {SHIFTS.map(shift => (
               <tr key={shift.id}>
-                <td style={{ textAlign: 'center', backgroundColor: '#f9f9f9', padding: '10px' }}>
-                  <div style={{ fontSize: '20px' }}>{shift.icon}</div>
-                  <div style={{ fontSize: '9px', fontWeight: '900', textTransform: 'uppercase' }}>{shift.label}</div>
+                <td style={{ textAlign: 'center', backgroundColor: '#f9f9f9', padding: '5px' }}>
+                  <div style={{ fontSize: '18pt' }}>{shift.icon}</div>
+                  <div style={{ fontSize: '7pt', fontWeight: '900', textTransform: 'uppercase' }}>{shift.label}</div>
                 </td>
                 {weekDates.map((colDate, idx) => {
-                  // Comparaison stricte par chaîne YYYY-MM-DD
                   const colDateStr = format(colDate, 'yyyy-MM-dd');
-                  
                   const dayTasks = tasks.filter(t => {
                     const taskDate = typeof t.startTime === 'string' ? parseISO(t.startTime) : t.startTime;
                     return t.shift === shift.id && format(taskDate, 'yyyy-MM-dd') === colDateStr;
                   });
 
                   return (
-                    <td key={idx} style={{ padding: '4px', verticalAlign: 'top', height: '160px' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <td key={idx} style={{ padding: '3px', verticalAlign: 'top', height: '140px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         {dayTasks.map(t => (
-                          <div key={t.id} style={{ border: '1px solid black', padding: '5px', backgroundColor: '#f2f2f2' }}>
-                            <div style={{ fontWeight: '900', fontSize: '10px', textTransform: 'uppercase', lineHeight: '1.1', marginBottom: '4px' }}>
-                              {t.name}
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px', borderTop: '1px solid #999', paddingTop: '2px' }}>
-                              <span style={{ fontSize: '9px', fontWeight: 'bold', background: 'black', color: 'white', padding: '0 3px' }}>
-                                {format(typeof t.startTime === 'string' ? parseISO(t.startTime) : t.startTime, 'HH:mm')}
-                              </span>
-                              <span style={{ fontSize: '10px', fontWeight: '900' }}>🔥 {formatDuration(t.cookTime)}</span>
+                          <div key={t.id} style={{ border: '0.5pt solid black', padding: '3px', backgroundColor: '#f2f2f2' }}>
+                            <div style={{ fontWeight: '900', fontSize: '8pt', textTransform: 'uppercase', lineHeight: '1' }}>{t.name}</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '3px', borderTop: '0.2pt solid #999', paddingTop: '2px' }}>
+                              <span style={{ fontSize: '7pt', fontWeight: 'bold' }}>{format(parseISO(t.startTime.toString()), 'HH:mm')}</span>
+                              <span style={{ fontSize: '7pt', fontWeight: '900' }}>{formatDuration(t.cookTime)}</span>
                             </div>
                           </div>
                         ))}
@@ -98,37 +89,27 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
         </table>
       </section>
 
-      {/* --- PAGE 2 : DÉTAILS --- */}
       <section>
-        <h2 style={{ fontSize: '20px', fontWeight: '900', borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '15px', textTransform: 'uppercase' }}>
-          Détails des Fiches de Production
+        <h2 style={{ fontSize: '16pt', fontWeight: '900', borderBottom: '2pt solid black', paddingBottom: '5px', marginBottom: '10px', textTransform: 'uppercase' }}>
+          Détails des Fiches
         </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           {tasks.map(t => {
             const tDate = typeof t.startTime === 'string' ? parseISO(t.startTime) : t.startTime;
             const expiry = calculateExpiry(t.startTime, t.cookTime, t.shelfLifeDays);
-            
             return (
-              <div key={t.id} className="fiche-box">
-                <div style={{ background: 'black', color: 'white', padding: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: '900', fontSize: '13px', textTransform: 'uppercase' }}>{t.name}</span>
-                  <span style={{ background: 'white', color: 'black', padding: '0 6px', fontWeight: '900', fontSize: '12px' }}>
-                    {format(tDate, 'HH:mm')}
-                  </span>
+              <div key={t.id} className="fiche-box" style={{ padding: '0' }}>
+                <div style={{ background: 'black', color: 'white', padding: '5px', display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontWeight: '900', fontSize: '10pt', textTransform: 'uppercase' }}>{t.name}</span>
+                  <span style={{ background: 'white', color: 'black', padding: '0 4px', fontWeight: '900', fontSize: '9pt' }}>{format(tDate, 'HH:mm')}</span>
                 </div>
-                <div style={{ padding: '12px', fontSize: '11px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid black', paddingBottom: '8px', marginBottom: '8px' }}>
-                    <div>CUISSON: <strong style={{ fontSize: '13px' }}>{formatDuration(t.cookTime)}</strong></div>
-                    <div>PRÉPA: <strong style={{ fontSize: '13px' }}>{t.prepTime}m</strong></div>
-                    <div>DLC: <strong style={{ fontSize: '13px' }}>{format(expiry, 'dd/MM')}</strong></div>
+                <div style={{ padding: '8px', fontSize: '9pt' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '0.5pt solid black', paddingBottom: '4px', marginBottom: '4px' }}>
+                    <div>CUISSON: <strong>{formatDuration(t.cookTime)}</strong></div>
+                    <div>DLC: <strong>{format(expiry, 'dd/MM')}</strong></div>
+                    <div>RESP: <strong>{t.responsible}</strong></div>
                   </div>
-                  <div style={{ minHeight: '40px', fontSize: '10px', lineHeight: '1.3' }}>
-                    <div style={{ fontWeight: 'bold', textTransform: 'uppercase', fontSize: '9px', color: '#666' }}>Commentaires :</div>
-                    {t.comments || "Aucune consigne spécifique."}
-                  </div>
-                  <div style={{ borderTop: '1px solid #eee', textAlign: 'right', fontSize: '9px', fontWeight: 'bold', marginTop: '8px', paddingTop: '4px' }}>
-                    RESPONSABLE : {t.responsible.toUpperCase()}
-                  </div>
+                  <div style={{ fontSize: '8pt', fontStyle: 'italic', color: '#444' }}>{t.comments || "Pas de commentaires."}</div>
                 </div>
               </div>
             );
