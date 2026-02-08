@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { format, addWeeks, startOfWeek, addDays, setHours, setMinutes, startOfDay, parseISO } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { fr } from 'date-fns/locale'; // Import du pack de langue français
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -35,8 +35,8 @@ const App: React.FC = () => {
   const currentWeekStart = startOfDay(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }));
   const currentWeekEnd = addDays(currentWeekStart, 4);
   
-  // Formatage du label pour tenir sur 2 lignes max
-  const weekLabel = `Semaine du ${format(currentWeekStart, 'dd MMM')} au ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
+  // Formatage forcé en Français pour éviter le mélange
+  const weekLabel = `Semaine du ${format(currentWeekStart, 'dd MMM', { locale: fr })} au ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
 
   useEffect(() => {
     const saved = localStorage.getItem('cuisine_tasks');
@@ -69,7 +69,7 @@ const App: React.FC = () => {
         setIsAlertsEnabled(true);
         new Notification("BISTROT M", { body: "Alertes activées ✅" });
       } else {
-        alert("Permission refusée.");
+        alert("Permission refusée. Activez les notifications dans votre navigateur.");
       }
     } else {
       setIsAlertsEnabled(false);
@@ -81,7 +81,7 @@ const App: React.FC = () => {
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     const link = document.createElement('a');
     link.setAttribute('href', dataUri);
-    link.setAttribute('download', `backup-${format(new Date(), 'dd-MM-yy')}.json`);
+    link.setAttribute('download', `sauvegarde-planning-${format(new Date(), 'dd-MM-yy')}.json`);
     link.click();
   };
 
@@ -91,7 +91,11 @@ const App: React.FC = () => {
     reader.onload = (e) => {
       try {
         const imported = JSON.parse(e.target?.result as string);
-        if (Array.isArray(imported)) { setTasks(imported); setIsSettingsOpen(false); }
+        if (Array.isArray(imported)) { 
+          setTasks(imported); 
+          setIsSettingsOpen(false); 
+          alert('Importation réussie !');
+        }
       } catch (err) { alert('Fichier invalide'); }
     };
     reader.readAsText(event.target.files[0]);
@@ -120,7 +124,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
       <div className="bg-[#0F172A] text-white py-1.5 px-4 flex justify-between items-center shrink-0">
-        <span className="font-black text-[9px] uppercase tracking-[0.2em]">BISTROT M — PLANNER</span>
+        <span className="font-black text-[9px] uppercase tracking-[0.2em]">BISTROT M — PLANIFICATEUR</span>
         <span className="text-[9px] opacity-60 uppercase">{format(currentTime, 'HH:mm')}</span>
       </div>
 
@@ -128,7 +132,7 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-3 py-4 md:py-6 flex flex-col gap-4">
           <div className="flex items-center justify-between gap-2">
             
-            {/* SÉLECTEUR DE SEMAINE OPTIMISÉ 2 LIGNES */}
+            {/* SÉLECTEUR DE SEMAINE - TEXTE 100% FRANCAIS */}
             <div className="flex-1 flex items-center bg-slate-900 rounded-3xl p-1 shadow-xl max-w-[70%]">
               <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
                 <span className="text-xl font-bold">‹</span>
@@ -153,7 +157,7 @@ const App: React.FC = () => {
                 }`}
               >
                 <span className="text-xl">{isAlertsEnabled ? '🔔' : '🔕'}</span>
-                <span className="text-[7px] font-black mt-0.5">{isAlertsEnabled ? 'ON' : 'OFF'}</span>
+                <span className="text-[7px] font-black mt-0.5">{isAlertsEnabled ? 'ACTIF' : 'OFF'}</span>
               </button>
 
               <button onClick={() => setIsSettingsOpen(true)} className="w-14 h-14 flex items-center justify-center rounded-[1.5rem] border-2 bg-white border-slate-200 text-slate-700 shadow-md active:scale-75">
@@ -193,7 +197,7 @@ const App: React.FC = () => {
       </main>
 
       <div className="fixed bottom-6 right-6 z-[110]">
-        <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-slate-900 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center border-4 border-white active:scale-90">
+        <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-slate-900 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center border-4 border-white active:scale-90 transition-transform">
           {isGeneratingPdf ? '...' : <span className="font-black text-xs">PDF</span>}
         </button>
       </div>
