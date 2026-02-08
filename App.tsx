@@ -16,6 +16,8 @@ const App: React.FC = () => {
   const [editingTask, setEditingTask] = useState<PrepTask | undefined>(undefined);
   const [showSettings, setShowSettings] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  // AJOUT : État pour forcer le rendu du PDF
+  const [isPrinting, setIsPrinting] = useState(false);
   
   const printRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,7 +29,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const saved = localStorage.getItem('cuisine_tasks');
     if (saved) {
-      try { setTasks(JSON.parse(saved)); } catch (e) { console.error("Erreur chargement:", e); }
+      try { setTasks(JSON.parse(saved)); } catch (e) { console.error(e); }
     }
   }, []);
 
@@ -35,7 +37,7 @@ const App: React.FC = () => {
     localStorage.setItem('cuisine_tasks', JSON.stringify(tasks));
   }, [tasks]);
 
-  // --- ACTIONS DE SAUVEGARDE ET RÉGLAGES ---
+  // --- ACTIONS PARAMÈTRES ---
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(tasks, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
@@ -70,32 +72,52 @@ const App: React.FC = () => {
     }
   };
 
-  // --- LOGIQUE PDF ---
+  // --- LOGIQUE PDF CORRIGÉE ---
   const handleDownloadPDF = async () => {
-    if (!printRef.current) return;
     setIsGeneratingPdf(true);
+    setIsPrinting(true); // 1. On active le rendu "propre"
     
-    const opt = {
-      margin: 0,
-      filename: `Planning_${format(currentWeekStart, 'yyyy-MM-dd')}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, width: 1122 },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-    };
+    // On attend que React ait fini de mettre à jour le DOM avec isPrinting = true
+    setTimeout(async () => {
+      const element = printRef.current;
+      if (!element) {
+        setIsGeneratingPdf(false);
+        setIsPrinting(false);
+        return;
+      }
 
-    try {
-      await new Promise(resolve => setTimeout(resolve, 600));
-      await html2pdf().set(opt).from(printRef.current).save();
-    } catch (err) { console.error("Erreur PDF:", err); } 
-    finally { setIsGeneratingPdf(false); }
+      const opt = {
+        margin: 0,
+        filename: `Planning_${format(currentWeekStart, 'yyyy-MM-dd')}.pdf`,
+        image: { type: 'jpeg', quality: 1 },
+        html2canvas: { 
+          scale: 2, 
+          useCORS: true, 
+          width: 1122,
+          windowWidth: 1122,
+          scrollY: 0,
+          scrollX: 0,
+          logging: false
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      };
+
+      try {
+        await html2pdf().set(opt).from(element).save();
+      } catch (err) {
+        console.error("Erreur PDF:", err);
+      } finally {
+        setIsGeneratingPdf(false);
+        setIsPrinting(false); // On repasse en mode caché
+      }
+    }, 500); // Délai pour laisser le DOM se stabiliser
   };
 
   const tasksForCurrentWeek = tasks.filter(t => {
     const tDate = typeof t.startTime === 'string' ? parseISO(t.startTime) : t.startTime;
-    const taskDayStr = format(tDate, 'yyyy-MM-dd');
-    return Array.from({ length: 7 }, (_, i) => 
-      format(addDays(currentWeekStart, i), 'yyyy-MM-dd')
-    ).includes(taskDayStr);
+    const dayStr = format(tDate, 'yyyy-MM-dd');
+    const weekDays = Array.from({ length: 7 }, (_, i) => format(addDays(currentWeekStart, i), 'yyyy-MM-dd'));
+    return weekDays.includes(dayStr);
   });
 
   return (
@@ -154,21 +176,34 @@ const App: React.FC = () => {
         />
       </main>
 
-      <div className="fixed bottom-6 left-0 right-0 px-4 z-40 flex justify-center">
+      <div className="fixed bottom-6 left-0 right-0 px-4 z-40 flex justify-center pointer-events-none">
         <button 
           onClick={handleDownloadPDF} 
           disabled={isGeneratingPdf} 
-          className="w-full max-w-xs bg-black text-white py-4 rounded-2xl font-black uppercase shadow-2xl active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+          className="w-full max-w-xs bg-black text-white py-4 rounded-2xl font-black uppercase shadow-2xl active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 pointer-events-auto"
         >
           {isGeneratingPdf ? "⏳ Génération..." : "📄 Exporter PDF Semaine"}
         </button>
       </div>
 
-      {/* ZONE D'IMPRESSION ISOLÉE (Ne casse pas le mobile) */}
-      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }}>
-        <div ref={printRef}>
+      {/* ZONE D'IMPRESSION : Modification stratégique de l'affichage */}
+      <div 
+        ref={printRef}
+        style={{ 
+          position: 'fixed', // Fixed évite les problèmes de scroll
+          top: 0, 
+          left: 0, 
+          zIndex: -100, // Derrière tout
+          visibility: isPrinting ? 'visible' : 'hidden', // Géré par React
+          opacity: isPrinting ? 1 : 0,
+          background: 'white',
+          width: '1122px'
+        }}
+      >
+        {/* On ne rend le contenu QUE si isPrinting est true pour garantir la fraîcheur des données */}
+        {(isPrinting || isGeneratingPdf) && (
           <PrintLayout tasks={tasksForCurrentWeek} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
-        </div>
+        )}
       </div>
 
       <TaskModal 
