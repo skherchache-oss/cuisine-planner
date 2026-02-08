@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { format, addWeeks, startOfWeek, addDays, setHours, setMinutes, parseISO } from 'date-fns';
+import { format, addWeeks, startOfWeek, addDays, setHours, setMinutes, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { PrepTask, ShiftType } from './types';
 import WeeklyCalendar from './components/WeeklyCalendar';
@@ -20,10 +20,11 @@ const App: React.FC = () => {
   const printRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const currentWeekStart = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 });
+  // Correction : On s'assure que le début de semaine est bien à 00:00:00
+  const currentWeekStart = startOfDay(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }));
   const weekLabel = `${format(currentWeekStart, 'dd MMM', { locale: fr })} - ${format(addDays(currentWeekStart, 4), 'dd MMM yyyy', { locale: fr })}`;
 
-  // --- PERSISTANCE & PARAMÈTRES ---
+  // --- PERSISTANCE ---
   useEffect(() => {
     const saved = localStorage.getItem('cuisine_tasks');
     if (saved) {
@@ -39,6 +40,7 @@ const App: React.FC = () => {
     localStorage.setItem('cuisine_tasks', JSON.stringify(tasks));
   }, [tasks]);
 
+  // --- PARAMÈTRES ---
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(tasks, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
@@ -83,13 +85,21 @@ const App: React.FC = () => {
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
     setIsGeneratingPdf(true);
+    
     const opt = {
       margin: 0,
       filename: `Planning_${weekLabel.replace(/ /g, '_')}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, width: 1100, windowWidth: 1100 },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        width: 1100, 
+        windowWidth: 1100,
+        logging: false 
+      },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
     };
+
     try { 
       await html2pdf().set(opt).from(printRef.current).save(); 
     } catch (err) {
@@ -99,10 +109,11 @@ const App: React.FC = () => {
     }
   };
 
-  // Filtrage des tâches pour l'export PDF (uniquement la semaine affichée)
+  // FILTRAGE CORRIGÉ : On vérifie que la tâche appartient bien à l'intervalle de la semaine
   const tasksForCurrentWeek = tasks.filter(t => {
-    const d = parseISO(t.startTime.toString());
-    return d >= currentWeekStart && d < addDays(currentWeekStart, 7);
+    const taskDate = parseISO(t.startTime.toString());
+    const weekEnd = endOfDay(addDays(currentWeekStart, 6));
+    return taskDate >= currentWeekStart && taskDate <= weekEnd;
   });
 
   return (
@@ -119,14 +130,14 @@ const App: React.FC = () => {
             </button>
             {showSettings && (
               <div className="absolute right-0 mt-10 w-56 bg-white border-2 border-gray-100 rounded-2xl shadow-2xl p-2 z-[60] animate-in zoom-in-95 duration-100">
-                <div className="text-[10px] font-black uppercase text-gray-400 p-2 border-b mb-1">Données Generative AI</div>
+                <div className="text-[10px] font-black uppercase text-gray-400 p-2 border-b mb-1">Système Generative AI</div>
                 <button onClick={handleExportJSON} className="w-full text-left p-3 text-sm font-bold hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors flex items-center gap-2">
                   📤 Sauvegarder (JSON)
                 </button>
                 <button onClick={() => fileInputRef.current?.click()} className="w-full text-left p-3 text-sm font-bold hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors flex items-center gap-2">
                   📥 Importer
                 </button>
-                <button onClick={() => {if(window.confirm("Attention : Cela supprimera TOUTES vos fiches. Continuer ?")) {setTasks([]); setShowSettings(false);}}} className="w-full text-left p-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2">
+                <button onClick={() => {if(window.confirm("Tout supprimer ?")) {setTasks([]); setShowSettings(false);}}} className="w-full text-left p-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2">
                   🗑️ Réinitialiser tout
                 </button>
                 <input type="file" ref={fileInputRef} className="hidden" onChange={handleImportJSON} accept=".json" />
@@ -135,7 +146,6 @@ const App: React.FC = () => {
           </div>
         </div>
         
-        {/* Navigation Semaine */}
         <div className="flex bg-gray-100 p-1 rounded-2xl border">
           <button onClick={() => setWeekOffset(v => v - 1)} className="flex-1 font-black py-2 active:bg-white rounded-xl transition-all">‹</button>
           <span className="flex-[3] text-center self-center text-[10px] font-black uppercase tracking-widest">{weekLabel}</span>
@@ -149,7 +159,7 @@ const App: React.FC = () => {
           currentTime={new Date()}
           onAddTask={handleAddTask}
           onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
-          onDeleteTask={(id) => { if(window.confirm("Supprimer cette fiche définitivement ?")) setTasks(prev => prev.filter(t => t.id !== id)); }}
+          onDeleteTask={(id) => { if(window.confirm("Supprimer ?")) setTasks(prev => prev.filter(t => t.id !== id)); }}
           onDuplicateTask={(t) => {
             const newTask = { ...t, id: crypto.randomUUID(), name: t.name + " (Copie)" };
             setTasks(prev => [...prev, newTask]);
@@ -161,22 +171,17 @@ const App: React.FC = () => {
         />
       </main>
 
-      {/* Bouton PDF Flottant */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-xs px-4 z-40">
         <button 
           onClick={handleDownloadPDF} 
           disabled={isGeneratingPdf} 
           className="w-full bg-black text-white py-5 rounded-3xl font-black uppercase shadow-2xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
         >
-          {isGeneratingPdf ? (
-            <>⏳ Génération en cours...</>
-          ) : (
-            <>📄 Exporter PDF Semaine</>
-          )}
+          {isGeneratingPdf ? <>⏳ Génération...</> : <>📄 Exporter PDF Semaine</>}
         </button>
       </div>
 
-      {/* Zone masquée pour le rendu PDF */}
+      {/* Rendu masqué pour html2pdf */}
       <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
         <div ref={printRef}>
           <PrintLayout tasks={tasksForCurrentWeek} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
@@ -192,10 +197,7 @@ const App: React.FC = () => {
         onSave={(task) => {
           setTasks(prev => {
             const exists = prev.find(t => t.id === task.id);
-            if (exists) {
-              return prev.map(t => t.id === task.id ? task : t);
-            }
-            return [...prev, task];
+            return exists ? prev.map(t => t.id === task.id ? task : t) : [...prev, task];
           });
           setIsModalOpen(false);
           setEditingTask(undefined);
