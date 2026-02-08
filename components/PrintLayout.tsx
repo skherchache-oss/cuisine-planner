@@ -14,117 +14,141 @@ interface PrintLayoutProps {
 const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDate }) => {
   const weekDates = Array.from({ length: 5 }, (_, i) => addDays(weekStartDate, i));
 
+  // Tri global pour les fiches techniques (Section 2)
+  const sortedTasks = [...tasks].sort((a, b) => a.startTime.localeCompare(b.startTime));
+
   return (
-    <div id="pdf-content" className="bg-white text-black font-sans" style={{ width: '287mm', padding: '5mm', margin: '0 auto' }}>
+    <div id="print-area" className="bg-white text-black font-sans" style={{ width: '287mm', margin: '0 auto' }}>
       
-      {/* HEADER PROFESSIONNEL */}
-      <div className="flex justify-between items-end mb-4 border-b-2 border-black pb-2">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tighter">Registre de Production Hebdomadaire</h1>
-          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em]">Traçabilité HACCP • Bistrot M</p>
+      {/* SECTION 1 : TABLEAU PLANNING (PAGE 1) */}
+      <div className="p-[10mm] bg-white">
+        <div className="flex justify-between items-end mb-6 border-b-2 border-black pb-2">
+          <div>
+            <h1 className="text-2xl font-black uppercase tracking-tighter">Registre de Production</h1>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Traçabilité HACCP • Bistrot M</p>
+          </div>
+          <div className="text-right">
+            <div className="text-sm font-black uppercase border border-black px-2 py-1 inline-block">Semaine : {weekLabel}</div>
+            <div className="text-[8px] text-gray-400 mt-1 uppercase italic font-bold">Généré le {format(new Date(), 'dd/MM/yyyy HH:mm')}</div>
+          </div>
         </div>
-        <div className="text-right flex flex-col items-end">
-          <div className="text-sm font-black uppercase bg-black text-white px-3 py-1 rounded">Semaine : {weekLabel}</div>
-          <span className="text-[8px] text-gray-400 mt-1 italic">Généré le {format(new Date(), 'dd/MM/yyyy HH:mm')}</span>
+
+        <table className="w-full border-collapse border border-black table-fixed">
+          <thead>
+            <tr className="bg-gray-50">
+              <th className="border border-black p-2 w-[70px] text-[10px] uppercase font-black">Shift</th>
+              {weekDates.map(date => (
+                <th key={date.toString()} className="border border-black p-2 font-black text-center uppercase">
+                  <div className="text-sm">{format(date, 'EEEE', { locale: fr })}</div>
+                  <div className="text-[9px] text-gray-400">{format(date, 'dd/MM', { locale: fr })}</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {SHIFTS.map(shift => (
+              <tr key={shift.id}>
+                <td className="border border-black p-2 bg-gray-50 align-middle text-center">
+                  <div className="text-2xl mb-1">{shift.icon}</div>
+                  <div className="text-[8px] font-black uppercase leading-tight">{shift.label}</div>
+                </td>
+                {weekDates.map((date, dayIdx) => {
+                  const dayTasks = tasks.filter(t => 
+                    t.shift === shift.id && isSameDay(parseISO(t.startTime), date)
+                  ).sort((a, b) => a.startTime.localeCompare(b.startTime));
+                  
+                  return (
+                    <td key={dayIdx} className="border border-black p-1 align-top bg-white min-h-[150px]">
+                      <div className="flex flex-col gap-1.5">
+                        {dayTasks.map(task => {
+                          const expiry = calculateExpiry(task.startTime, task.cookTime, task.shelfLifeDays);
+                          return (
+                            <div key={task.id} className="border border-gray-300 p-1.5 rounded-sm flex flex-col bg-white">
+                              <div className="flex justify-between items-start border-b border-gray-100 pb-1 mb-1 gap-1">
+                                <span className="text-[9px] font-black bg-slate-100 px-1 rounded">{format(parseISO(task.startTime), 'HH:mm')}</span>
+                                <span className="font-bold uppercase text-[8px] leading-tight flex-1 text-right truncate">{task.name}</span>
+                              </div>
+                              <div className="flex justify-between text-[7px] font-medium text-gray-500 mb-1">
+                                <span>👤 {task.responsible}</span>
+                                <span>DLC: {format(expiry, 'dd/MM')}</span>
+                              </div>
+                              {/* Ligne pour note manuelle (T° ou Lot) */}
+                              <div className="border-t border-dotted border-gray-300 mt-1 flex justify-between pt-0.5">
+                                <span className="text-[6px] text-gray-400">T°: ____</span>
+                                <span className="text-[6px] text-gray-400">VISA: ____</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        
+        <div className="mt-4 text-[8px] font-bold text-gray-400 uppercase text-center border-t border-gray-100 pt-2">
+          Contrôle critique : Températures de cuisson & refroidissement obligatoires. Signature Responsable : ___________________
         </div>
       </div>
 
-      {/* TABLEAU DE BORD DE PRODUCTION */}
-      <table className="w-full border-collapse border-2 border-black table-auto">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border-2 border-black p-2 w-[65px] text-[10px] uppercase font-black">Shift</th>
-            {weekDates.map(date => (
-              <th key={date.toString()} className="border-2 border-black p-2 font-black text-center uppercase">
-                <div className="text-base">{format(date, 'EEEE', { locale: fr })}</div>
-                <div className="text-[10px] text-gray-400">{format(date, 'dd/MM', { locale: fr })}</div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {SHIFTS.map(shift => (
-            <tr key={shift.id}>
-              <td className="border-2 border-black p-2 bg-gray-50 align-middle text-center">
-                <div className="text-2xl mb-1">{shift.icon}</div>
-                <div className="text-[8px] font-black uppercase leading-tight">{shift.label}</div>
-              </td>
-              {weekDates.map((date, dayIdx) => {
-                const dayTasks = tasks.filter(t => 
-                  t.shift === shift.id && 
-                  isSameDay(parseISO(t.startTime), date)
-                );
-                
-                // Tri par heure pour le PDF
-                const sortedDayTasks = [...dayTasks].sort((a, b) => 
-                  a.startTime.localeCompare(b.startTime)
-                );
-                
-                return (
-                  <td key={dayIdx} className="border border-black p-1 align-top bg-white min-w-[125px]">
-                    <div className="flex flex-col gap-2">
-                      {sortedDayTasks.map(task => {
-                        const expiry = calculateExpiry(task.startTime, task.cookTime, task.shelfLifeDays);
-                        return (
-                          <div key={task.id} className="border border-gray-400 p-2 rounded-sm flex flex-col bg-white">
-                            
-                            {/* 1. HEURE & DÉSIGNATION */}
-                            <div className="border-b border-black pb-1 mb-1 flex justify-between items-start gap-1">
-                              <span className="text-[10px] font-black bg-black text-white px-1 rounded whitespace-nowrap">
-                                {format(parseISO(task.startTime), 'HH:mm')}
-                              </span>
-                              <span className="font-black uppercase text-[10px] leading-tight flex-1 text-right truncate">
-                                {task.name}
-                              </span>
-                            </div>
+      {/* SAUT DE PAGE POUR LES FICHES TECHNIQUES */}
+      <div className="html2pdf__page-break"></div>
 
-                            {/* 2. RESPONSABLE & TEMPS PROD */}
-                            <div className="grid grid-cols-2 text-[8px] font-bold mb-1">
-                              <span className="truncate pr-1">👤 {task.responsible}</span>
-                              <span className="text-right text-blue-800">⏱️ {task.cookTime + (task.prepTime || 0)} min</span>
-                            </div>
+      {/* SECTION 2 : FICHES DÉTAILLÉES (PAGES SUIVANTES) */}
+      <div className="p-[10mm] bg-white">
+        <h2 className="text-xl font-black uppercase border-b-4 border-black pb-2 mb-8 flex items-center gap-3">
+          <span>📋</span> Fiches Techniques & Instructions de Poste
+        </h2>
+        
+        <div className="grid grid-cols-2 gap-6">
+          {sortedTasks.map((task) => {
+            const expiry = calculateExpiry(task.startTime, task.cookTime, task.shelfLifeDays);
+            return (
+              <div key={task.id} className="border border-black rounded-lg overflow-hidden flex flex-col avoid-break bg-white shadow-sm">
+                <div className="bg-slate-900 text-white p-3 flex justify-between items-center">
+                  <div className="font-black text-sm uppercase">{task.name}</div>
+                  <div className="text-[10px] font-bold bg-white/20 px-2 py-1 rounded">
+                    {format(parseISO(task.startTime), 'EEEE dd/MM', { locale: fr })}
+                  </div>
+                </div>
 
-                            {/* 3. CONSERVATION (DLC) */}
-                            <div className="bg-red-50 text-red-700 border border-red-200 py-0.5 px-1 text-[8px] font-black flex justify-between rounded-sm">
-                              <span>DLC :</span>
-                              <span>{format(expiry, 'dd/MM HH:mm')}</span>
-                            </div>
+                <div className="p-4 grid grid-cols-3 gap-4 border-b border-gray-100">
+                  <div className="text-center">
+                    <div className="text-[7px] text-gray-400 font-black uppercase">Responsable</div>
+                    <div className="text-[10px] font-bold">{task.responsible}</div>
+                  </div>
+                  <div className="text-center border-x border-gray-100">
+                    <div className="text-[7px] text-gray-400 font-black uppercase">Temps Global</div>
+                    <div className="text-[10px] font-bold">{task.cookTime + (task.prepTime || 0)} min</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-[7px] text-red-400 font-black uppercase tracking-tighter">DLC Maximum</div>
+                    <div className="text-[9px] font-black text-red-600">{format(expiry, 'dd/MM/yyyy HH:mm')}</div>
+                  </div>
+                </div>
 
-                            {/* 4. DÉTAILS / NOTES (Le contenu de la fiche) */}
-                            {task.comments && (
-                              <div className="mt-1.5 text-[7px] leading-tight text-gray-700 italic border-l border-gray-300 pl-1 whitespace-pre-wrap">
-                                {task.comments}
-                              </div>
-                            )}
+                <div className="p-4 flex-1">
+                  <div className="text-[8px] font-black text-slate-300 uppercase mb-2">Procédure & Notes</div>
+                  <div className="text-[10px] leading-relaxed text-gray-700 whitespace-pre-wrap italic">
+                    {task.comments || "Aucune instruction spécifique renseignée."}
+                  </div>
+                </div>
 
-                            {/* 5. ZONE DE SAISIE MANUELLE (Espace libre) */}
-                            <div className="mt-2 border-t border-dashed border-gray-300 pt-1">
-                              <div className="flex justify-between items-end gap-2">
-                                <div className="flex-1 border-b border-gray-200 h-4">
-                                  <span className="text-[5px] text-gray-300 uppercase block leading-none">Notes / Lot</span>
-                                </div>
-                                <div className="w-8 border-b border-gray-200 h-4 text-center">
-                                  <span className="text-[5px] text-gray-300 uppercase block leading-none">T° Cœur</span>
-                                </div>
-                              </div>
-                            </div>
-
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* FOOTER */}
-      <div className="mt-4 flex justify-between items-center text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-        <span>Vérification HACCP obligatoire - Bistrot M</span>
-        <span>Signature Responsable : __________________________</span>
+                <div className="bg-gray-50 p-3 border-t border-gray-100 grid grid-cols-2 gap-4">
+                  <div className="border-b border-gray-300 h-6 flex items-end pb-1">
+                    <span className="text-[7px] text-gray-400 uppercase mr-2 font-bold">N° Lot :</span>
+                  </div>
+                  <div className="border-b border-gray-300 h-6 flex items-end pb-1">
+                    <span className="text-[7px] text-gray-400 uppercase mr-2 font-bold">T° Fin :</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 // Imports types, constantes et services
-import { PrepTask, ShiftType } from './types';
+import { PrepTask } from './types';
 import { STAFF_LIST } from './constants';
 import { requestNotificationPermission, checkTasksForAlerts, getNotificationStatus } from './services/notificationService';
 
@@ -35,7 +35,6 @@ const App: React.FC = () => {
   const currentWeekStart = startOfDay(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }));
   const currentWeekEnd = addDays(currentWeekStart, 4);
   
-  // Formatage pour l'affichage header
   const weekLabel = `Semaine du ${format(currentWeekStart, 'dd MMM', { locale: fr })} au ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
 
   useEffect(() => {
@@ -101,13 +100,12 @@ const App: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  // --- LOGIQUE EXPORT PDF OPTIMISÉE ---
+  // --- LOGIQUE EXPORT PDF OPTIMISÉE (A4 Paysage) ---
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
     setIsGeneratingPdf(true);
     
-    // On laisse un petit délai pour le rendu
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     try {
       const element = printRef.current;
@@ -116,12 +114,7 @@ const App: React.FC = () => {
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        width: 1200, // Largeur fixe pour garantir le ratio paysage
-        onclone: (clonedDoc) => {
-          // Force l'élément cloné à être visible pour la capture
-          const el = clonedDoc.getElementById('print-area');
-          if (el) el.style.display = 'block';
-        }
+        windowWidth: 1120, // Largeur 297mm approx en pixels écran
       });
 
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
@@ -133,16 +126,11 @@ const App: React.FC = () => {
 
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgProps = pdf.getImageProperties(imgData);
-      const contentHeightInPdf = (imgProps.height * pdfWidth) / imgProps.width;
-
-      // Centrage vertical si le contenu est plus court que la page
-      const positionY = contentHeightInPdf < pdfHeight ? (pdfHeight - contentHeightInPdf) / 2 : 0;
-
-      pdf.addImage(imgData, 'JPEG', 0, positionY, pdfWidth, contentHeightInPdf);
       
-      // Nom du fichier personnalisé : planning BM - semaine dd mm dd mm
-      const fileName = `planning BM - semaine ${format(currentWeekStart, 'dd MM')} ${format(currentWeekEnd, 'dd MM')}.pdf`;
+      // Ajustement pour remplir la page sans déformer
+      pdf.addImage(imgData, 'JPEG', 5, 5, pdfWidth - 10, pdfHeight - 10);
+      
+      const fileName = `planning BM - ${format(currentWeekStart, 'dd-MM')} au ${format(currentWeekEnd, 'dd-MM')}.pdf`;
       pdf.save(fileName);
       
     } catch (e) { 
@@ -154,41 +142,59 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
-      <div className="bg-[#0F172A] text-white py-1.5 px-4 flex justify-between items-center shrink-0">
-        <span className="font-black text-[9px] uppercase tracking-[0.2em]">BISTROT M — PLANIFICATEUR</span>
-        <span className="text-[9px] opacity-60 uppercase">{format(currentTime, 'HH:mm')}</span>
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans overflow-x-hidden">
+      {/* Barre supérieure discrète */}
+      <div className="bg-[#0F172A] text-white py-1 px-4 flex justify-between items-center shrink-0">
+        <span className="font-black text-[8px] uppercase tracking-[0.2em]">BISTROT M — Kitchen Manager</span>
+        <span className="text-[9px] font-bold">{format(currentTime, 'HH:mm', { locale: fr })}</span>
       </div>
 
       <header className="bg-white border-b-2 border-slate-200 sticky top-0 z-[100] shadow-sm">
-        <div className="max-w-7xl mx-auto px-3 py-4 md:py-6 flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex-1 flex items-center bg-slate-900 rounded-3xl p-1 shadow-xl max-w-[70%]">
-              <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
-                <span className="text-xl font-bold">‹</span>
-              </button>
-              <div className="flex-1 text-center py-1">
-                <h1 className="text-white font-black text-[11px] md:text-base uppercase tracking-tight leading-tight px-1">{weekLabel}</h1>
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            
+            {/* NAVIGATION SEMAINE + BOUTON PDF COLLÉ */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center bg-slate-900 rounded-2xl p-1 shadow-lg">
+                <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-8 h-8 flex items-center justify-center text-white active:scale-90">
+                  <span className="text-xl font-bold">‹</span>
+                </button>
+                <div className="px-4 text-center">
+                  <h1 className="text-white font-black text-xs uppercase tracking-tight">{weekLabel}</h1>
+                </div>
+                <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-8 h-8 flex items-center justify-center text-white active:scale-90">
+                  <span className="text-xl font-bold">›</span>
+                </button>
               </div>
-              <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
-                <span className="text-xl font-bold">›</span>
+
+              {/* BOUTON PDF : RAPPROCHÉ ET BIEN VISIBLE */}
+              <button 
+                onClick={handleDownloadPDF} 
+                disabled={isGeneratingPdf}
+                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2 border-b-4 border-red-800 disabled:opacity-50"
+              >
+                <span className="text-sm">{isGeneratingPdf ? '⏳' : '📄'}</span>
+                <span className="font-black text-[10px] uppercase tracking-wider">
+                  {isGeneratingPdf ? 'Génération...' : 'Exporter PDF'}
+                </span>
               </button>
             </div>
 
+            {/* ALERTES ET PARAMÈTRES */}
             <div className="flex items-center gap-2">
-              <button onClick={handleToggleAlerts} className={`w-14 h-14 flex flex-col items-center justify-center rounded-[1.5rem] border-2 transition-all shadow-md active:scale-75 ${isAlertsEnabled ? 'bg-emerald-500 border-emerald-400 text-white' : 'bg-white border-slate-200 text-slate-400'}`}>
-                <span className="text-xl">{isAlertsEnabled ? '🔔' : '🔕'}</span>
-                <span className="text-[7px] font-black mt-0.5">{isAlertsEnabled ? 'ACTIF' : 'OFF'}</span>
+              <button onClick={handleToggleAlerts} className={`px-4 py-2 rounded-xl border-2 transition-all flex items-center gap-2 font-bold text-[10px] ${isAlertsEnabled ? 'bg-emerald-500 border-emerald-400 text-white shadow-emerald-200 shadow-lg' : 'bg-white border-slate-200 text-slate-400'}`}>
+                <span>{isAlertsEnabled ? '🔔' : '🔕'}</span>
+                {isAlertsEnabled ? 'ALERTES ACTIVES' : 'ALERTES OFF'}
               </button>
-              <button onClick={() => setIsSettingsOpen(true)} className="w-14 h-14 flex items-center justify-center rounded-[1.5rem] border-2 bg-white border-slate-200 text-slate-700 shadow-md active:scale-75">
-                <span className="text-2xl">⚙️</span>
+              <button onClick={() => setIsSettingsOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-xl border-2 bg-white border-slate-200 text-slate-700 shadow-sm active:scale-75">
+                <span className="text-xl">⚙️</span>
               </button>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="w-full max-w-7xl mx-auto px-3 py-6 flex-1 relative z-10">
+      <main className="w-full max-w-7xl mx-auto px-4 py-6 flex-1">
         <WeeklyCalendar 
           tasks={tasks} currentTime={currentTime}
           onAddTask={(idx, shift) => {
@@ -216,33 +222,28 @@ const App: React.FC = () => {
         />
       </main>
 
-      <div className="fixed bottom-6 right-6 z-[110]">
-        <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-slate-900 text-white w-16 h-16 rounded-full shadow-2xl flex items-center justify-center border-4 border-white active:scale-90 transition-transform">
-          {isGeneratingPdf ? '...' : <span className="font-black text-xs">PDF</span>}
-        </button>
-      </div>
-
-      {/* ZONE DE CAPTURE PDF - CACHÉE MAIS OPTIMISÉE */}
-      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-        <div ref={printRef} id="print-area" style={{ width: '1200px', backgroundColor: 'white' }}>
+      {/* ZONE DE CAPTURE PDF CACHÉE */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
+        <div ref={printRef} style={{ width: '287mm', backgroundColor: 'white' }}>
           <PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
         </div>
       </div>
 
       <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveTask} initialTask={editingTask || modalInitialData} />
       
+      {/* MODAL PARAMÈTRES */}
       {isSettingsOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4 text-slate-900">
-          <div className="bg-white rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl">
-            <h2 className="text-2xl font-black mb-6">Paramètres</h2>
-            <div className="space-y-3 mb-8">
-              <button onClick={handleExportJSON} className="w-full py-4 bg-blue-50 text-blue-700 rounded-2xl font-bold active:scale-95 transition-all">📤 Sauvegarder JSON</button>
-              <button onClick={() => fileInputRef.current?.click()} className="w-full py-4 bg-slate-50 text-slate-700 rounded-2xl font-bold active:scale-95 transition-all">📥 Restaurer JSON</button>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border-4 border-slate-900">
+            <h2 className="text-xl font-black mb-6 uppercase italic">Configuration</h2>
+            <div className="space-y-3 mb-6">
+              <button onClick={handleExportJSON} className="w-full py-3 bg-blue-50 text-blue-700 rounded-xl font-black text-xs uppercase tracking-widest border-2 border-blue-200 active:scale-95 transition-all">📤 Sauvegarde JSON</button>
+              <button onClick={() => fileInputRef.current?.click()} className="w-full py-3 bg-slate-50 text-slate-700 rounded-xl font-black text-xs uppercase tracking-widest border-2 border-slate-200 active:scale-95 transition-all">📥 Restaurer JSON</button>
               <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />
             </div>
-            <div className="border-t pt-6 space-y-3">
-              <button onClick={() => { if(confirm('Tout effacer ?')) { localStorage.clear(); window.location.reload(); } }} className="w-full py-4 bg-rose-600 text-white rounded-2xl font-bold active:scale-95 transition-all">⚠️ Réinitialiser</button>
-              <button onClick={() => setIsSettingsOpen(false)} className="w-full py-4 bg-slate-200 text-slate-600 rounded-2xl font-bold active:scale-95 transition-all">Fermer</button>
+            <div className="border-t-2 border-slate-100 pt-6 space-y-3">
+              <button onClick={() => { if(confirm('Tout effacer ?')) { localStorage.clear(); window.location.reload(); } }} className="w-full py-3 bg-red-100 text-red-600 rounded-xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">⚠️ Reset Global</button>
+              <button onClick={() => setIsSettingsOpen(false)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">Fermer</button>
             </div>
           </div>
         </div>
