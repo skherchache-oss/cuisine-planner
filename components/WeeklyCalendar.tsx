@@ -1,229 +1,271 @@
-import React, { useState, useRef } from 'react';
-import { PrepTask, ShiftType } from '../types.ts';
-import { SHIFTS, CATEGORY_COLORS } from '../constants.ts';
-import { formatDuration } from '../utils.ts';
-import { isBefore, addMinutes, isAfter, isSameDay, addDays, format } from 'date-fns';
+import React, { useState, useEffect, useRef } from 'react';
+import { format, addWeeks, startOfWeek, addDays, isBefore, addMinutes, isAfter, setHours, setMinutes, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-interface WeeklyCalendarProps {
-  tasks: PrepTask[];
-  currentTime: Date;
-  onAddTask: (dayIndex: number, shift: ShiftType) => void;
-  onEditTask: (task: PrepTask) => void;
-  onDeleteTask: (id: string) => void;
-  onDuplicateTask: (task: PrepTask) => void;
-  onMoveTask: (taskId: string, newDate: Date, newShift: ShiftType) => void;
-  weekStartDate: Date;
-}
+import { PrepTask, ShiftType } from './types';
+import WeeklyCalendar from './components/WeeklyCalendar';
+import TaskModal from './components/TaskModal';
+import PrintLayout from './components/PrintLayout';
+import { requestNotificationPermission, checkTasksForAlerts, getNotificationStatus } from './services/notificationService';
+import { STAFF_LIST } from './constants';
 
-const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ 
-  tasks, 
-  currentTime, 
-  onAddTask, 
-  onEditTask, 
-  onDeleteTask, 
-  onDuplicateTask, 
-  onMoveTask, 
-  weekStartDate 
-}) => {
-  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
-  const [dropTarget, setDropTarget] = useState<{ dayIdx: number, shiftId: string } | null>(null);
+declare const html2pdf: any;
+
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
+const genAI = new GoogleGenerativeAI(API_KEY);
+
+const App: React.FC = () => {
+  const [tasks, setTasks] = useState<PrepTask[]>([]);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<PrepTask | undefined>(undefined);
+  const [modalInitialData, setModalInitialData] = useState<Partial<PrepTask>>({});
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<string>('default');
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [showSettings, setShowSettings] = useState(false);
   
-  // Refs pour le suivi tactile
-  const touchScrollPos = useRef({ x: 0, y: 0 });
+  const printRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
 
-  const weekDates = Array.from({ length: 5 }, (_, i) => addDays(weekStartDate, i));
+  const currentWeekStart = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 });
+  const currentWeekEnd = addDays(currentWeekStart, 4);
+  const weekLabel = `${format(currentWeekStart, 'dd MMM', { locale: fr })} - ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
 
-  // --- LOGIQUE MOUSE (DESKTOP) ---
-  const handleDragStart = (e: React.DragEvent, taskId: string) => {
-    setDraggedTaskId(taskId);
-    e.dataTransfer.setData('taskId', taskId);
-    e.dataTransfer.effectAllowed = 'move';
-    
-    const ghost = (e.currentTarget as HTMLElement).cloneNode(true) as HTMLElement;
-    ghost.style.opacity = '0.5';
-    ghost.style.position = 'absolute';
-    ghost.style.top = '-1000px';
-    document.body.appendChild(ghost);
-    e.dataTransfer.setDragImage(ghost, 20, 20);
-    setTimeout(() => document.body.removeChild(ghost), 0);
-  };
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setShowSettings(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent, dayIdx: number, shiftId: string) => {
-    e.preventDefault();
-    setDropTarget({ dayIdx, shiftId });
-  };
-
-  const handleDrop = (e: React.DragEvent, dayIdx: number, shiftId: ShiftType) => {
-    e.preventDefault();
-    const taskId = e.dataTransfer.getData('taskId');
-    if (taskId) {
-      onMoveTask(taskId, weekDates[dayIdx], shiftId);
+  useEffect(() => {
+    const saved = localStorage.getItem('cuisine_tasks');
+    if (saved) {
+      try { setTasks(JSON.parse(saved)); } catch (e) { console.error("Failed to load tasks", e); }
     }
-    setDropTarget(null);
-    setDraggedTaskId(null);
+    setNotifPermission(getNotificationStatus());
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('cuisine_tasks', JSON.stringify(tasks));
+  }, [tasks]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+      checkTasksForAlerts(tasks);
+    }, 1000); 
+    return () => clearInterval(interval);
+  }, [tasks]);
+
+  const handleExportJSON = () => {
+    const dataStr = JSON.stringify(tasks, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', `backup_planning_${format(new Date(), 'dd-MM-yyyy')}.json`);
+    linkElement.click();
+    setShowSettings(false);
   };
 
-  // --- LOGIQUE TOUCH (MOBILE) ---
-  const handleTouchStart = (taskId: string) => {
-    setDraggedTaskId(taskId);
-    if (window.navigator.vibrate) window.navigator.vibrate(40); // Feedback haptique
+  const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const json = JSON.parse(e.target?.result as string);
+        if (Array.isArray(json) && window.confirm("Remplacer tout le planning par ce fichier ?")) {
+          setTasks(json);
+          setShowSettings(false);
+        }
+      } catch (err) { alert("Erreur fichier"); }
+    };
+    reader.readAsText(file);
   };
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-    const zone = el?.closest('[data-zone-id]');
-    
-    if (zone) {
-      const [dayIdx, shiftId] = zone.getAttribute('data-zone-id')!.split('|');
-      setDropTarget({ dayIdx: parseInt(dayIdx), shiftId });
+  const handleResetAll = () => {
+    if (window.confirm("🗑️ Supprimer TOUTES les données ?") && window.confirm("Confirmation finale ?")) {
+      setTasks([]);
+      localStorage.removeItem('cuisine_tasks');
+      setShowSettings(false);
     }
   };
 
-  const handleTouchEnd = (e: React.TouchEvent, taskId: string) => {
-    if (dropTarget) {
-      onMoveTask(taskId, weekDates[dropTarget.dayIdx], dropTarget.shiftId as ShiftType);
-    }
-    setDropTarget(null);
-    setDraggedTaskId(null);
+  const handleRequestPermission = async () => {
+    const permission = await requestNotificationPermission();
+    setNotifPermission(permission || 'denied');
   };
+
+  // --- LES FONCTIONS DE TACHES ---
+  const handleAddTask = (dayIdx: number, shift: ShiftType) => {
+    const dayDate = addDays(currentWeekStart, dayIdx);
+    const dateAt8AM = format(setMinutes(setHours(dayDate, 8), 0), "yyyy-MM-dd'T'HH:mm");
+    setModalInitialData({ id: undefined, name: '', dayOfWeek: dayIdx, shift, startTime: dateAt8AM, responsible: STAFF_LIST[0], prepTime: 15, cookTime: 60, packingTime: 10, shelfLifeDays: 3, comments: '' });
+    setEditingTask(undefined);
+    setIsModalOpen(true);
+  };
+
+  const handleEditTask = (task: PrepTask) => { 
+    setEditingTask(task); 
+    setIsModalOpen(true); 
+  };
+
+  const handleDuplicateTask = (task: PrepTask) => { 
+    setTasks(prev => [...prev, { ...task, id: crypto.randomUUID(), name: `${task.name} (Copie)` }]); 
+  };
+
+  const handleSaveTask = (task: PrepTask) => {
+    if (editingTask) setTasks(prev => prev.map(t => t.id === task.id ? task : t));
+    else setTasks(prev => [...prev, task]);
+    setIsModalOpen(false);
+  };
+
+  const handleDeleteTask = (id: string) => setTasks(prev => prev.filter(t => t.id !== id));
+
+  const handleMoveTask = (taskId: string, newDate: Date, newShift: ShiftType) => {
+    setTasks(prev => prev.map(task => {
+      if (task.id === taskId) {
+        const oldStart = parseISO(task.startTime);
+        const updatedStart = setMinutes(setHours(newDate, oldStart.getHours()), oldStart.getMinutes());
+        return { ...task, startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"), shift: newShift, dayOfWeek: (updatedStart.getDay() + 6) % 7 };
+      }
+      return task;
+    }));
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!printRef.current) return;
+    setIsGeneratingPdf(true);
+    const opt = { margin: 0, filename: `Planning_${weekLabel}.pdf`, image: { type: 'jpeg', quality: 1.0 }, html2canvas: { scale: 2, useCORS: true, width: 1122 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } };
+    try { await html2pdf().set(opt).from(printRef.current).save(); } finally { setIsGeneratingPdf(false); }
+  };
+
+  const activeAlerts = tasks
+    .map(task => {
+      const start = new Date(task.startTime);
+      const end = addMinutes(start, task.cookTime);
+      const isOngoing = isBefore(start, currentTime) && isAfter(end, currentTime);
+      const isStartingSoon = isAfter(start, currentTime) && isBefore(start, addMinutes(currentTime, 30));
+      let status = 'none', remainingSeconds = 0;
+      if (isOngoing) { status = 'ongoing'; remainingSeconds = Math.max(0, Math.floor((end.getTime() - currentTime.getTime()) / 1000)); }
+      else if (isStartingSoon) { status = 'soon'; remainingSeconds = Math.max(0, Math.floor((start.getTime() - currentTime.getTime()) / 1000)); }
+      return { ...task, status, remainingSeconds };
+    })
+    .filter(t => t.status !== 'none');
 
   return (
-    <div className="overflow-x-auto shadow-sm border rounded-xl bg-white">
-      <table className="w-full border-collapse min-w-[800px] table-fixed">
-        <thead>
-          <tr className="bg-gray-100 border-b">
-            <th className="p-4 text-left font-semibold text-gray-600 w-24 border-r">Créneau</th>
-            {weekDates.map((date) => (
-              <th key={date.toString()} className="p-4 text-center border-r">
-                <div className="text-[10px] uppercase font-black text-gray-400 tracking-widest">
-                  {format(date, 'EEEE', { locale: fr })}
-                </div>
-                <div className="font-black text-gray-800 text-sm">
-                  {format(date, 'dd MMM', { locale: fr })}
-                </div>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {SHIFTS.map((shift) => (
-            <tr key={shift.id} className="border-b last:border-b-0 group">
-              <td className="p-4 bg-gray-50 border-r font-medium text-gray-700 flex flex-col items-center justify-center min-h-[120px]">
-                <span className="text-2xl mb-1">{shift.icon}</span>
-                <span className="text-[10px] uppercase tracking-widest font-black">{shift.label}</span>
-              </td>
-              {weekDates.map((date, dayIdx) => {
-                const dayTasks = tasks.filter(t => 
-                  t.shift === shift.id && 
-                  isSameDay(new Date(t.startTime), date)
-                );
+    <div className="min-h-screen bg-gray-50 pb-28">
+      <header className="no-print bg-white border-b shadow-sm sticky top-0 z-40 py-3">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="bg-blue-600 w-9 h-9 flex items-center justify-center rounded-xl text-white shadow-md">🍽️</div>
+                <h1 className="font-black text-gray-900 text-lg tracking-tighter uppercase">Cuisine Planner</h1>
+              </div>
 
-                const isOver = dropTarget?.dayIdx === dayIdx && dropTarget?.shiftId === shift.id;
+              <div className="flex items-center gap-2">
+                <button onClick={handleRequestPermission} className={`p-2 rounded-full border transition-all ${notifPermission === 'granted' ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200 animate-pulse'}`}>
+                  {notifPermission === 'granted' ? '🔔' : '🔕'}
+                </button>
+                
+                <div className="relative" ref={settingsRef}>
+                  <button onClick={() => setShowSettings(!showSettings)} className="bg-gray-100 p-2 rounded-full border border-gray-200 hover:bg-gray-200 transition-all font-bold text-sm">
+                    ⚙️ <span className="hidden sm:inline ml-1">Options</span>
+                  </button>
 
-                return (
-                  <td 
-                    key={dayIdx} 
-                    data-zone-id={`${dayIdx}|${shift.id}`}
-                    onDragOver={(e) => handleDragOver(e, dayIdx, shift.id)}
-                    onDragLeave={() => setDropTarget(null)}
-                    onDrop={(e) => handleDrop(e, dayIdx, shift.id)}
-                    className={`p-2 border-r align-top relative transition-all duration-200 ${
-                      isOver ? 'bg-blue-100/50 ring-2 ring-inset ring-blue-400' : 'bg-white'
-                    }`}
-                  >
-                    <div className="flex flex-col gap-2 h-full min-h-[100px]">
-                      {dayTasks.map(task => {
-                        const start = new Date(task.startTime);
-                        const end = addMinutes(start, task.cookTime);
-                        const isOngoing = isBefore(start, currentTime) && isAfter(end, currentTime);
-                        const remainingSeconds = isOngoing ? Math.max(0, Math.floor((end.getTime() - currentTime.getTime()) / 1000)) : 0;
-                        const isBeingDragged = draggedTaskId === task.id;
-
-                        return (
-                          <div 
-                            key={task.id} 
-                            draggable="true"
-                            onDragStart={(e) => handleDragStart(e, task.id)}
-                            onDragEnd={() => setDraggedTaskId(null)}
-                            onTouchStart={() => handleTouchStart(task.id)}
-                            onTouchMove={handleTouchMove}
-                            onTouchEnd={(e) => handleTouchEnd(e, task.id)}
-                            className={`relative mb-1 group/task task-card-mobile ${isBeingDragged ? 'opacity-30 scale-95 z-0' : 'z-10'}`}
-                          >
-                            <div className="absolute -top-1.5 -right-1.5 flex gap-1 z-50 opacity-0 group-hover/task:opacity-100 transition-opacity">
-                              <button 
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  onDuplicateTask(task);
-                                }}
-                                className="w-6 h-6 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-lg border border-white transition-transform active:scale-125"
-                                title="Dupliquer"
-                              >
-                                <span className="text-[10px] leading-none pointer-events-none">📋</span>
-                              </button>
-                              <button 
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  onDeleteTask(task.id);
-                                }}
-                                className="w-6 h-6 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow-lg border border-white transition-transform active:scale-125"
-                                title="Supprimer"
-                              >
-                                <span className="text-[12px] font-black leading-none pointer-events-none">×</span>
-                              </button>
-                            </div>
-
-                            <div 
-                              onClick={() => onEditTask(task)}
-                              className={`p-2 rounded-lg border text-xs cursor-grab active:cursor-grabbing shadow-sm transition-all select-none ${
-                                isOngoing ? 'ring-2 ring-orange-400 border-orange-400 bg-orange-50' : CATEGORY_COLORS.prep
-                              }`}
-                            >
-                              <div className="font-black uppercase tracking-tighter truncate mb-1 pr-10 text-gray-900">
-                                {task.name}
-                              </div>
-                              
-                              {isOngoing && (
-                                <div className="mb-1 flex items-center gap-1 bg-orange-500 text-white px-1.5 py-0.5 rounded-[4px] text-[8px] font-black animate-pulse">
-                                  <span>⌛</span>
-                                  <span>{Math.floor(remainingSeconds / 60)}m {remainingSeconds % 60}s</span>
-                                </div>
-                              )}
-
-                              <div className="text-[9px] flex justify-between items-center opacity-80 font-bold">
-                                <span className="truncate mr-1 text-gray-600 font-black">👤 {task.responsible}</span>
-                                <span className={`whitespace-nowrap font-black ${isOngoing ? 'text-orange-700' : 'text-gray-600'}`}>🔥 {formatDuration(task.cookTime)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      
-                      <button 
-                        onClick={() => onAddTask(dayIdx, shift.id)}
-                        className="mt-auto w-full py-2 border-2 border-dashed border-gray-100 rounded-lg text-gray-300 hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50 transition-all flex items-center justify-center group/add"
-                      >
-                        <span className="text-lg leading-none group-hover/add:scale-125 transition-transform">+</span>
-                      </button>
+                  {showSettings && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in duration-200">
+                      <p className="text-[10px] font-black text-gray-400 uppercase px-3 py-2 border-b mb-1 tracking-widest">Données</p>
+                      <button onClick={handleExportJSON} className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl flex items-center gap-3 transition-colors"><span>📤</span> Sauvegarder</button>
+                      <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-green-50 hover:text-green-600 rounded-xl flex items-center gap-3 transition-colors"><span>📥</span> Restaurer</button>
+                      <button onClick={handleResetAll} className="w-full text-left px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl flex items-center gap-3 transition-colors"><span>🗑️</span> Vider tout</button>
+                      <input type="file" ref={fileInputRef} className="hidden" accept=".json" onChange={handleImportJSON} />
                     </div>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="p-2 bg-gray-50 border-t text-[9px] text-gray-400 font-bold uppercase text-center tracking-widest">
-        💡 Astuce : Utilisez 📋 pour dupliquer une fiche, puis faites-la glisser vers un autre jour
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center bg-gray-100 rounded-2xl p-1.5 shadow-inner border border-gray-200">
+              <button onClick={() => setWeekOffset(prev => prev - 1)} className="flex-1 py-2 hover:bg-white rounded-xl transition-all font-black text-xl">‹</button>
+              <div className="flex-[3] text-center">
+                <span className="text-xs font-black text-gray-800 uppercase tracking-tighter">{weekLabel}</span>
+              </div>
+              <button onClick={() => setWeekOffset(prev => prev + 1)} className="flex-1 py-2 hover:bg-white rounded-xl transition-all font-black text-xl">›</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="no-print max-w-7xl mx-auto px-4 mt-6">
+        <div className="mb-6">
+          <h2 className="text-3xl font-black text-gray-900 tracking-tighter">Planning</h2>
+          <div className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black uppercase mt-2 tracking-widest">
+            {activeAlerts.length} production{activeAlerts.length > 1 ? 's' : ''} active{activeAlerts.length > 1 ? 's' : ''}
+          </div>
+        </div>
+
+        {/* VERIFICATION ICI : Toutes les fonctions sont bien passées */}
+        <WeeklyCalendar 
+          tasks={tasks} 
+          currentTime={currentTime} 
+          onAddTask={handleAddTask} 
+          onEditTask={handleEditTask} 
+          onDeleteTask={handleDeleteTask} 
+          onDuplicateTask={handleDuplicateTask} 
+          onMoveTask={handleMoveTask} 
+          weekStartDate={currentWeekStart} 
+        />
+        
+        {activeAlerts.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">⏱️ Moniteur Actif</h3>
+            <div className="space-y-3">
+              {activeAlerts.map(alertTask => (
+                <div key={alertTask.id} className={`p-4 rounded-2xl border-l-8 shadow-sm flex items-center justify-between ${alertTask.status === 'ongoing' ? 'border-orange-500 bg-white' : 'border-blue-500 bg-white'}`}>
+                  <div className="flex flex-col">
+                    <span className="font-black text-sm uppercase">{alertTask.name}</span>
+                    <span className="text-[10px] font-bold text-gray-400">👤 {alertTask.responsible}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="block text-[9px] font-black text-gray-400 uppercase leading-none">{alertTask.status === 'ongoing' ? 'Prêt dans' : 'Début dans'}</span>
+                    <span className="text-xl font-black font-mono text-gray-800">{Math.floor(alertTask.remainingSeconds / 60)}:{String(alertTask.remainingSeconds % 60).padStart(2, '0')}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
+
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-xs px-4 z-40 no-print">
+        <button 
+          onClick={handleDownloadPDF} 
+          disabled={isGeneratingPdf} 
+          className="w-full bg-gray-900 text-white py-4 rounded-2xl flex items-center justify-center gap-3 shadow-2xl active:scale-95 transition-all disabled:opacity-50"
+        >
+          <span className="text-xl">{isGeneratingPdf ? '⏳' : '📄'}</span>
+          <span className="font-black uppercase text-sm tracking-widest">
+            {isGeneratingPdf ? 'Génération...' : 'Exporter en PDF'}
+          </span>
+        </button>
       </div>
+
+      <div style={{ position: 'absolute', left: '-9999px', top: '0', zIndex: -1 }}>
+        <div ref={printRef}><PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} /></div>
+      </div>
+
+      <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveTask} initialTask={editingTask || modalInitialData} />
     </div>
   );
 };
 
-export default WeeklyCalendar;
+export default App;
