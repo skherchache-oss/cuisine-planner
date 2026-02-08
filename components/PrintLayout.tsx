@@ -15,34 +15,28 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
   const weekDates = Array.from({ length: 5 }, (_, i) => addDays(weekStartDate, i));
 
   return (
-    <div className="bg-white text-black font-sans" style={{ width: '287mm', minHeight: '200mm', padding: '5mm', margin: '0 auto' }}>
+    <div id="pdf-content" className="bg-white text-black font-sans" style={{ width: '287mm', padding: '5mm', margin: '0 auto' }}>
       
-      {/* HEADER ÉPURÉ */}
-      <div className="flex justify-between items-center mb-4 border-b-2 border-black pb-2">
-        <div className="flex items-center gap-4">
-          <div className="bg-black text-white px-3 py-1 text-xl font-black uppercase">
-            BISTROT M
-          </div>
-          <div>
-            <h1 className="text-lg font-bold uppercase leading-none">Registre de Production Hebdomadaire</h1>
-            <p className="text-[9px] font-medium text-gray-500 uppercase tracking-widest mt-1">Traçabilité HACCP & Organisation de Cuisine</p>
-          </div>
+      {/* HEADER PROFESSIONNEL */}
+      <div className="flex justify-between items-end mb-4 border-b-2 border-black pb-2">
+        <div>
+          <h1 className="text-2xl font-black uppercase tracking-tighter">Registre de Production Hebdomadaire</h1>
+          <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em]">Traçabilité HACCP • Bistrot M</p>
         </div>
-        <div className="text-right">
-          <div className="border-2 border-black px-4 py-1 font-black text-sm uppercase">
-            Semaine du : {weekLabel}
-          </div>
+        <div className="text-right flex flex-col items-end">
+          <div className="text-sm font-black uppercase bg-black text-white px-3 py-1 rounded">Semaine : {weekLabel}</div>
+          <span className="text-[8px] text-gray-400 mt-1 italic">Généré le {format(new Date(), 'dd/MM/yyyy HH:mm')}</span>
         </div>
       </div>
 
-      {/* TABLEAU PRINCIPAL OPTIMISÉ */}
-      <table className="w-full border-collapse border border-black text-[10px]">
+      {/* TABLEAU DE BORD DE PRODUCTION */}
+      <table className="w-full border-collapse border-2 border-black table-auto">
         <thead>
           <tr className="bg-gray-100">
-            <th className="border border-black p-2 w-[70px] uppercase font-bold text-[9px]">Shift</th>
+            <th className="border-2 border-black p-2 w-[65px] text-[10px] uppercase font-black">Shift</th>
             {weekDates.map(date => (
-              <th key={date.toString()} className="border border-black p-2 font-bold text-center uppercase">
-                <div className="text-black text-sm">{format(date, 'EEEE', { locale: fr })}</div>
+              <th key={date.toString()} className="border-2 border-black p-2 font-black text-center uppercase">
+                <div className="text-base">{format(date, 'EEEE', { locale: fr })}</div>
                 <div className="text-[10px] text-gray-400">{format(date, 'dd/MM', { locale: fr })}</div>
               </th>
             ))}
@@ -51,7 +45,7 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
         <tbody>
           {SHIFTS.map(shift => (
             <tr key={shift.id}>
-              <td className="border border-black p-2 bg-gray-50 align-middle text-center">
+              <td className="border-2 border-black p-2 bg-gray-50 align-middle text-center">
                 <div className="text-2xl mb-1">{shift.icon}</div>
                 <div className="text-[8px] font-black uppercase leading-tight">{shift.label}</div>
               </td>
@@ -61,46 +55,63 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
                   isSameDay(parseISO(t.startTime), date)
                 );
                 
+                // Tri par heure pour le PDF
+                const sortedDayTasks = [...dayTasks].sort((a, b) => 
+                  a.startTime.localeCompare(b.startTime)
+                );
+                
                 return (
-                  <td key={dayIdx} className="border border-black p-1 align-top bg-white">
-                    <div className="flex flex-col gap-2 h-full">
-                      {dayTasks.length > 0 ? dayTasks.map(task => {
+                  <td key={dayIdx} className="border border-black p-1 align-top bg-white min-w-[125px]">
+                    <div className="flex flex-col gap-2">
+                      {sortedDayTasks.map(task => {
                         const expiry = calculateExpiry(task.startTime, task.cookTime, task.shelfLifeDays);
                         return (
-                          <div key={task.id} className="border border-gray-300 p-1.5 rounded flex flex-col gap-1 bg-white">
-                            {/* Titre & Heure */}
-                            <div className="flex justify-between items-start border-b border-gray-100 pb-1">
-                              <span className="font-bold uppercase text-[9px] leading-tight flex-1 pr-1">{task.name}</span>
-                              <span className="font-mono text-[8px] whitespace-nowrap">{format(parseISO(task.startTime), 'HH:mm')}</span>
-                            </div>
+                          <div key={task.id} className="border border-gray-400 p-2 rounded-sm flex flex-col bg-white">
                             
-                            {/* Infos Clés */}
-                            <div className="grid grid-cols-2 text-[7px] leading-tight text-gray-600 italic">
-                              <span>👤 {task.responsible}</span>
-                              <span className="text-right">🔥 {formatDuration(task.cookTime)}</span>
+                            {/* 1. HEURE & DÉSIGNATION */}
+                            <div className="border-b border-black pb-1 mb-1 flex justify-between items-start gap-1">
+                              <span className="text-[10px] font-black bg-black text-white px-1 rounded whitespace-nowrap">
+                                {format(parseISO(task.startTime), 'HH:mm')}
+                              </span>
+                              <span className="font-black uppercase text-[10px] leading-tight flex-1 text-right truncate">
+                                {task.name}
+                              </span>
                             </div>
 
-                            {/* DLC Mise en avant */}
-                            <div className="bg-gray-50 border border-gray-200 py-0.5 text-center rounded text-[8px] font-bold">
-                              DLC: {format(expiry, 'dd/MM HH:mm')}
+                            {/* 2. RESPONSABLE & TEMPS PROD */}
+                            <div className="grid grid-cols-2 text-[8px] font-bold mb-1">
+                              <span className="truncate pr-1">👤 {task.responsible}</span>
+                              <span className="text-right text-blue-800">⏱️ {task.cookTime + (task.prepTime || 0)} min</span>
                             </div>
 
-                            {/* Champs de saisie manuelle (Température & Visa) */}
-                            <div className="flex gap-2 mt-0.5">
-                              <div className="flex-1">
-                                <div className="text-[6px] text-gray-400 uppercase leading-none">T° Cœur</div>
-                                <div className="border-b border-black h-3 w-full"></div>
+                            {/* 3. CONSERVATION (DLC) */}
+                            <div className="bg-red-50 text-red-700 border border-red-200 py-0.5 px-1 text-[8px] font-black flex justify-between rounded-sm">
+                              <span>DLC :</span>
+                              <span>{format(expiry, 'dd/MM HH:mm')}</span>
+                            </div>
+
+                            {/* 4. DÉTAILS / NOTES (Le contenu de la fiche) */}
+                            {task.comments && (
+                              <div className="mt-1.5 text-[7px] leading-tight text-gray-700 italic border-l border-gray-300 pl-1 whitespace-pre-wrap">
+                                {task.comments}
                               </div>
-                              <div className="w-6">
-                                <div className="text-[6px] text-gray-400 uppercase leading-none">Visa</div>
-                                <div className="border-b border-black h-3 w-full"></div>
+                            )}
+
+                            {/* 5. ZONE DE SAISIE MANUELLE (Espace libre) */}
+                            <div className="mt-2 border-t border-dashed border-gray-300 pt-1">
+                              <div className="flex justify-between items-end gap-2">
+                                <div className="flex-1 border-b border-gray-200 h-4">
+                                  <span className="text-[5px] text-gray-300 uppercase block leading-none">Notes / Lot</span>
+                                </div>
+                                <div className="w-8 border-b border-gray-200 h-4 text-center">
+                                  <span className="text-[5px] text-gray-300 uppercase block leading-none">T° Cœur</span>
+                                </div>
                               </div>
                             </div>
+
                           </div>
                         );
-                      }) : (
-                        <div className="h-12"></div> // Espace minimal si vide
-                      )}
+                      })}
                     </div>
                   </td>
                 );
@@ -110,15 +121,10 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
         </tbody>
       </table>
 
-      {/* FOOTER HACCP LÉGER */}
-      <div className="mt-4 flex justify-between items-end border-t border-gray-200 pt-2">
-        <div className="text-[8px] text-gray-500 leading-tight">
-          <strong>RAPPEL HACCP :</strong> Relevé de température obligatoire à cœur après cuisson.<br/>
-          Refroidissement rapide de +63°C à +10°C en moins de 2h. Étiquetage DLC obligatoire.
-        </div>
-        <div className="text-[8px] font-mono text-gray-300 uppercase italic">
-          Logiciel de gestion Bistrot M - Document de traçabilité interne
-        </div>
+      {/* FOOTER */}
+      <div className="mt-4 flex justify-between items-center text-[8px] font-bold text-gray-400 uppercase tracking-widest">
+        <span>Vérification HACCP obligatoire - Bistrot M</span>
+        <span>Signature Responsable : __________________________</span>
       </div>
     </div>
   );
