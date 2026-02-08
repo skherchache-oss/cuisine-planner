@@ -100,39 +100,21 @@ const App: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  // --- LOGIQUE EXPORT PDF OPTIMISÉE (A4 Paysage) ---
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
     setIsGeneratingPdf(true);
-    
     await new Promise(resolve => setTimeout(resolve, 500));
-
     try {
       const element = printRef.current;
       const canvas = await html2canvas(element, { 
-        scale: 2, 
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        windowWidth: 1120, // Largeur 297mm approx en pixels écran
+        scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', windowWidth: 1120 
       });
-
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
-      const pdf = new jsPDF({ 
-        orientation: 'landscape', 
-        unit: 'mm', 
-        format: 'a4' 
-      });
-
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      // Ajustement pour remplir la page sans déformer
       pdf.addImage(imgData, 'JPEG', 5, 5, pdfWidth - 10, pdfHeight - 10);
-      
-      const fileName = `planning BM - ${format(currentWeekStart, 'dd-MM')} au ${format(currentWeekEnd, 'dd-MM')}.pdf`;
-      pdf.save(fileName);
-      
+      pdf.save(`planning BM - ${format(currentWeekStart, 'dd-MM')}.pdf`);
     } catch (e) { 
       console.error("Erreur PDF:", e); 
       alert("Erreur lors de la génération du PDF.");
@@ -150,51 +132,67 @@ const App: React.FC = () => {
       </div>
 
       <header className="bg-white border-b-2 border-slate-200 sticky top-0 z-[100] shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 py-3 md:py-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
             
-            {/* NAVIGATION SEMAINE + BOUTON PDF COLLÉ */}
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center bg-slate-900 rounded-2xl p-1 shadow-lg">
-                <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-8 h-8 flex items-center justify-center text-white active:scale-90">
-                  <span className="text-xl font-bold">‹</span>
-                </button>
-                <div className="px-4 text-center">
-                  <h1 className="text-white font-black text-xs uppercase tracking-tight">{weekLabel}</h1>
-                </div>
-                <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-8 h-8 flex items-center justify-center text-white active:scale-90">
-                  <span className="text-xl font-bold">›</span>
-                </button>
+            {/* NAVIGATION SEMAINE : Pleine largeur sur mobile */}
+            <div className="flex items-center bg-slate-900 rounded-2xl p-1 shadow-md w-full md:w-auto">
+              <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
+                <span className="text-xl font-bold">‹</span>
+              </button>
+              <div className="flex-1 px-2 text-center">
+                <h1 className="text-white font-black text-[10px] md:text-xs uppercase tracking-tight">{weekLabel}</h1>
               </div>
-
-              {/* BOUTON PDF : RAPPROCHÉ ET BIEN VISIBLE */}
-              <button 
-                onClick={handleDownloadPDF} 
-                disabled={isGeneratingPdf}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-2 border-b-4 border-red-800 disabled:opacity-50"
-              >
-                <span className="text-sm">{isGeneratingPdf ? '⏳' : '📄'}</span>
-                <span className="font-black text-[10px] uppercase tracking-wider">
-                  {isGeneratingPdf ? 'Génération...' : 'Exporter PDF'}
-                </span>
+              <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
+                <span className="text-xl font-bold">›</span>
               </button>
             </div>
 
-            {/* ALERTES ET PARAMÈTRES */}
-            <div className="flex items-center gap-2">
-              <button onClick={handleToggleAlerts} className={`px-4 py-2 rounded-xl border-2 transition-all flex items-center gap-2 font-bold text-[10px] ${isAlertsEnabled ? 'bg-emerald-500 border-emerald-400 text-white shadow-emerald-200 shadow-lg' : 'bg-white border-slate-200 text-slate-400'}`}>
-                <span>{isAlertsEnabled ? '🔔' : '🔕'}</span>
-                {isAlertsEnabled ? 'ALERTES ACTIVES' : 'ALERTES OFF'}
+            {/* ACTION BAR MOBILE : Grille 3 colonnes compacte (S'affiche en flex sur desktop) */}
+            <div className="grid grid-cols-3 md:flex items-center gap-2 w-full md:w-auto">
+              
+              {/* BOUTON PDF */}
+              <button 
+                onClick={handleDownloadPDF} 
+                disabled={isGeneratingPdf}
+                className="flex flex-col md:flex-row items-center justify-center gap-1 bg-red-600 hover:bg-red-700 text-white py-2 md:px-4 md:py-2 rounded-xl shadow-md transition-all active:scale-95 border-b-4 border-red-800 disabled:opacity-50"
+              >
+                <span className="text-sm">{isGeneratingPdf ? '⏳' : '📄'}</span>
+                <span className="font-black text-[7px] md:text-[10px] uppercase tracking-tighter md:tracking-wider">
+                  {isGeneratingPdf ? 'Wait' : 'PDF'}
+                </span>
               </button>
-              <button onClick={() => setIsSettingsOpen(true)} className="w-10 h-10 flex items-center justify-center rounded-xl border-2 bg-white border-slate-200 text-slate-700 shadow-sm active:scale-75">
-                <span className="text-xl">⚙️</span>
+
+              {/* BOUTON ALERTES */}
+              <button 
+                onClick={handleToggleAlerts} 
+                className={`flex flex-col md:flex-row items-center justify-center gap-1 py-2 md:px-4 md:py-2 rounded-xl border-2 transition-all shadow-md active:scale-95 ${
+                  isAlertsEnabled 
+                    ? 'bg-emerald-500 border-emerald-400 text-white shadow-emerald-100' 
+                    : 'bg-white border-slate-200 text-slate-400 shadow-sm'
+                }`}
+              >
+                <span className="text-sm">{isAlertsEnabled ? '🔔' : '🔕'}</span>
+                <span className="font-black text-[7px] md:text-[10px] uppercase tracking-tighter md:tracking-wider">
+                  {isAlertsEnabled ? 'Actif' : 'Off'}
+                </span>
               </button>
+
+              {/* BOUTON PARAMÈTRES */}
+              <button 
+                onClick={() => setIsSettingsOpen(true)} 
+                className="flex flex-col md:flex-row items-center justify-center gap-1 py-2 md:w-10 md:h-10 rounded-xl border-2 bg-white border-slate-200 text-slate-700 shadow-sm active:scale-95"
+              >
+                <span className="text-sm md:text-xl">⚙️</span>
+                <span className="md:hidden font-black text-[7px] uppercase tracking-tighter text-slate-500">Config</span>
+              </button>
+
             </div>
           </div>
         </div>
       </header>
 
-      <main className="w-full max-w-7xl mx-auto px-4 py-6 flex-1">
+      <main className="w-full max-w-7xl mx-auto px-2 md:px-4 py-4 md:py-6 flex-1">
         <WeeklyCalendar 
           tasks={tasks} currentTime={currentTime}
           onAddTask={(idx, shift) => {
