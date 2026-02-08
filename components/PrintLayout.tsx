@@ -11,56 +11,45 @@ interface PrintLayoutProps {
   weekStartDate: Date;
 }
 
-// Fonction utilitaire pour l'affichage intelligent de la durée
 const formatDuration = (minutes: number) => {
-  if (minutes >= 60 && minutes % 15 === 0) {
-    return `${minutes / 60}H`;
-  }
+  if (minutes >= 60 && minutes % 15 === 0) return `${minutes / 60}H`;
   return `${minutes} MIN`;
 };
 
 const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDate }) => {
+  // On génère 5 jours (Lundi à Vendredi)
   const weekDates = Array.from({ length: 5 }, (_, i) => addDays(weekStartDate, i));
 
-  const sortedTasks = [...tasks]
-    .filter(t => {
-      const taskDate = new Date(t.startTime);
-      return taskDate >= weekStartDate && taskDate <= addDays(weekStartDate, 5);
-    })
-    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  // Tri des tâches pour les fiches détaillées
+  const sortedTasks = [...tasks].sort((a, b) => 
+    new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+  );
 
   return (
-    <div className="bg-white text-black font-sans" style={{ width: '287mm', padding: '5mm', boxSizing: 'border-box' }}>
+    <div style={{ width: '1120px', backgroundColor: 'white', color: 'black', padding: '20px', fontFamily: 'Arial, sans-serif' }}>
       <style>{`
         @page { size: landscape; margin: 0; }
-        .print-card { page-break-inside: avoid; break-inside: avoid; }
+        .page-break { page-break-after: always; }
+        .print-card { break-inside: avoid; border: 3px solid black; margin-bottom: 20px; }
       `}</style>
       
-      {/* SECTION 1 : LE PLANNING HEBDOMADAIRE */}
-      <section style={{ pageBreakAfter: 'always', marginBottom: '10mm' }}>
-        <div className="flex justify-between items-center mb-4 border-b-[3px] border-black pb-3">
-          <div className="flex items-center gap-4">
-            <div className="bg-black text-white px-3 py-2 text-2xl font-black rounded-lg">CUISINE</div>
-            <div>
-              <h1 className="text-xl font-black uppercase tracking-tighter">Planning de Production</h1>
-              <p className="text-[8px] font-bold text-gray-500 uppercase tracking-widest">Registre de traçabilité hebdomadaire</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="border-[2.5px] border-black px-4 py-1 font-black text-sm uppercase">
-              Semaine : {weekLabel}
-            </div>
-          </div>
+      {/* SECTION 1 : LE PLANNING HEBDOMADAIRE (TABLEAU) */}
+      <section className="page-break" style={{ marginBottom: '40px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '5px solid black', paddingBottom: '10px', marginBottom: '20px' }}>
+          <h1 style={{ fontSize: '28px', fontWeight: '900', margin: 0, textTransform: 'uppercase' }}>
+            Planning de Production - {weekLabel}
+          </h1>
+          <div style={{ backgroundColor: 'black', color: 'white', padding: '5px 15px', fontWeight: '900' }}>CUISINE</div>
         </div>
 
-        <table className="w-full border-collapse border-[2px] border-black">
+        <table style={{ width: '100%', borderCollapse: 'collapse', border: '3px solid black' }}>
           <thead>
-            <tr className="bg-gray-100">
-              <th className="border-[1.5px] border-black p-1 w-[80px] text-[9px] uppercase font-black">Shift</th>
+            <tr style={{ backgroundColor: '#eeeeee' }}>
+              <th style={{ border: '2px solid black', padding: '10px', width: '100px', fontSize: '12px' }}>SHIFT</th>
               {weekDates.map(date => (
-                <th key={date.toString()} className="border-[1.5px] border-black p-1 font-black text-center uppercase text-[10px]">
-                  <div>{format(date, 'EEEE', { locale: fr })}</div>
-                  <div className="text-[8px] opacity-60">{format(date, 'dd/MM', { locale: fr })}</div>
+                <th key={date.toString()} style={{ border: '2px solid black', padding: '10px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '14px', fontWeight: '900', textTransform: 'uppercase' }}>{format(date, 'EEEE', { locale: fr })}</div>
+                  <div style={{ fontSize: '12px' }}>{format(date, 'dd/MM')}</div>
                 </th>
               ))}
             </tr>
@@ -68,28 +57,26 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
           <tbody>
             {SHIFTS.map(shift => (
               <tr key={shift.id}>
-                <td className="border-[1.5px] border-black p-2 bg-gray-50 align-middle text-center">
-                  <div className="text-xl mb-0.5">{shift.icon}</div>
-                  <div className="text-[8px] font-black uppercase leading-tight">{shift.label}</div>
+                <td style={{ border: '2px solid black', padding: '15px', textAlign: 'center', backgroundColor: '#f9f9f9' }}>
+                  <div style={{ fontSize: '24px' }}>{shift.icon}</div>
+                  <div style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase' }}>{shift.label}</div>
                 </td>
                 {weekDates.map((date, dayIdx) => {
+                  // Filtrage précis des tâches pour ce jour et ce shift
                   const dayTasks = tasks.filter(t => 
                     t.shift === shift.id && 
-                    isSameDay(new Date(t.startTime), date)
+                    isSameDay(parseISO(t.startTime.toString()), date)
                   );
-                  
+
                   return (
-                    <td key={dayIdx} className="border-[1.5px] border-black p-1 align-top bg-white min-h-[80px]">
-                      <div className="flex flex-col gap-1.5">
+                    <td key={dayIdx} style={{ border: '2px solid black', padding: '5px', verticalAlign: 'top', height: '120px', backgroundColor: 'white' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         {dayTasks.map(task => (
-                          <div key={task.id} className="border-[1px] border-black p-1.5 rounded-sm bg-gray-50 flex flex-col gap-0.5">
-                            <div className="font-black uppercase text-[8px] leading-none border-b border-black/10 pb-1 mb-0.5 truncate">
-                              {task.name}
-                            </div>
-                            <div className="flex justify-between items-center text-[6.5px] font-bold">
-                              <span className="truncate max-w-[35%]">👤 {task.responsible}</span>
-                              <span className="whitespace-nowrap">🕒 {format(parseISO(task.startTime), 'HH:mm')}</span>
-                              <span className="whitespace-nowrap">🔥 {formatDuration(task.cookTime)}</span>
+                          <div key={task.id} style={{ border: '1px solid black', padding: '4px', borderRadius: '2px', backgroundColor: '#f0f0f0' }}>
+                            <div style={{ fontWeight: '900', fontSize: '9px', textTransform: 'uppercase', marginBottom: '2px' }}>{task.name}</div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', fontWeight: 'bold' }}>
+                              <span>🕒 {format(parseISO(task.startTime.toString()), 'HH:mm')}</span>
+                              <span>👤 {task.responsible.split(' ')[0]}</span>
                             </div>
                           </div>
                         ))}
@@ -103,53 +90,49 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
         </table>
       </section>
 
-      {/* SECTION 2 : FICHES DÉTAILLÉES (Une fiche = un bloc aéré) */}
+      {/* SECTION 2 : FICHES DÉTAILLÉES */}
       <section>
-        <h2 className="text-xl font-black uppercase border-b-4 border-black pb-1 mb-6">Détails des Fiches de Production</h2>
-        <div className="grid grid-cols-2 gap-6"> {/* Deux fiches par ligne pour plus d'espace */}
+        <h2 style={{ fontSize: '22px', fontWeight: '900', textTransform: 'uppercase', borderBottom: '3px solid black', paddingBottom: '5px', marginBottom: '20px' }}>
+          Détails des Fiches de Fabrication
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           {sortedTasks.map((task) => {
             const expiry = calculateExpiry(task.startTime, task.cookTime, task.shelfLifeDays);
-
             return (
-              <div key={task.id} className="print-card border-[3px] border-black flex flex-col min-h-[120mm]">
-                <div className="bg-black text-white p-4 flex justify-between items-center">
-                  <div className="font-black text-lg uppercase leading-tight">{task.name}</div>
-                  <div className="text-right">
-                    <div className="text-[10px] font-bold uppercase opacity-70">Date de Prod</div>
-                    <div className="text-sm font-black">{format(parseISO(task.startTime), 'dd/MM/yyyy')}</div>
+              <div key={task.id} className="print-card">
+                <div style={{ backgroundColor: 'black', color: 'white', padding: '10px 15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: '16px', fontWeight: '900', textTransform: 'uppercase' }}>{task.name}</div>
+                  <div style={{ backgroundColor: 'white', color: 'black', padding: '2px 10px', fontWeight: '900', fontSize: '18px', borderRadius: '4px' }}>
+                    {format(parseISO(task.startTime.toString()), 'HH:mm')}
                   </div>
                 </div>
 
-                <div className="p-6 flex-1 flex flex-col">
-                  <div className="grid grid-cols-3 gap-4 mb-6 border-b-2 border-black pb-6 text-center">
+                <div style={{ padding: '15px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', textAlign: 'center', marginBottom: '15px', borderBottom: '1px solid black', paddingBottom: '15px' }}>
                     <div>
-                      <div className="text-[10px] font-black uppercase opacity-40">Préparation</div>
-                      <div className="text-2xl font-black">{task.prepTime}m</div>
+                      <div style={{ fontSize: '8px', fontWeight: 'bold', opacity: 0.5 }}>PRÉPA</div>
+                      <div style={{ fontSize: '16px', fontWeight: '900' }}>{task.prepTime}m</div>
                     </div>
-                    <div className="border-x-2 border-black/10">
-                      <div className="text-[10px] font-black uppercase opacity-40">Cuisson</div>
-                      <div className="text-4xl font-black">{formatDuration(task.cookTime)}</div>
+                    <div style={{ borderLeft: '1px solid #ddd', borderRight: '1px solid #ddd' }}>
+                      <div style={{ fontSize: '8px', fontWeight: 'bold', opacity: 0.5 }}>CUISSON</div>
+                      <div style={{ fontSize: '16px', fontWeight: '900' }}>{formatDuration(task.cookTime)}</div>
                     </div>
                     <div>
-                      <div className="text-[10px] font-black uppercase opacity-40">Conditionnement</div>
-                      <div className="text-2xl font-black">{task.packingTime}m</div>
+                      <div style={{ fontSize: '8px', fontWeight: 'bold', opacity: 0.5 }}>DLC</div>
+                      <div style={{ fontSize: '14px', fontWeight: '900' }}>{format(expiry, 'dd/MM')}</div>
                     </div>
                   </div>
 
-                  <div className="mb-6 flex-1 bg-gray-50 p-4 border border-black/5">
-                    <div className="text-[10px] font-black uppercase opacity-30 mb-2">Instructions de Recette</div>
-                    <div className="text-sm italic whitespace-pre-wrap">{task.comments || "Aucune instruction spécifique."}</div>
+                  <div style={{ backgroundColor: '#f9f9f9', padding: '10px', border: '1px dashed #ccc', marginBottom: '15px', minHeight: '60px' }}>
+                    <div style={{ fontSize: '8px', fontWeight: '900', marginBottom: '5px', opacity: 0.4 }}>INSTRUCTIONS</div>
+                    <div style={{ fontSize: '11px', fontStyle: 'italic' }}>{task.comments || "Aucune consigne particulière."}</div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 items-end mt-auto">
-                    <div className="bg-gray-100 p-4 border-2 border-black">
-                      <div className="text-[10px] font-black uppercase opacity-50 mb-1">DLC (À consommer avant)</div>
-                      <div className="text-lg font-black">{format(expiry, 'dd/MM/yyyy HH:mm')}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontSize: '10px', fontWeight: '900' }}>
+                      RESPONSABLE : <span style={{ textTransform: 'uppercase' }}>{task.responsible}</span>
                     </div>
-                    <div className="text-right pb-2">
-                      <div className="text-[9px] font-black uppercase opacity-30">Responsable</div>
-                      <div className="text-sm font-black uppercase">{task.responsible}</div>
-                    </div>
+                    <div style={{ fontSize: '9px', fontWeight: 'bold' }}>Visa : __________</div>
                   </div>
                 </div>
               </div>
