@@ -135,7 +135,7 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 py-3 md:py-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
             
-            {/* NAVIGATION SEMAINE : Pleine largeur sur mobile */}
+            {/* NAVIGATION SEMAINE */}
             <div className="flex items-center bg-slate-900 rounded-2xl p-1 shadow-md w-full md:w-auto">
               <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
                 <span className="text-xl font-bold">‹</span>
@@ -148,7 +148,7 @@ const App: React.FC = () => {
               </button>
             </div>
 
-            {/* ACTION BAR MOBILE : Grille 3 colonnes compacte (S'affiche en flex sur desktop) */}
+            {/* ACTION BAR : Boutons compacts */}
             <div className="grid grid-cols-3 md:flex items-center gap-2 w-full md:w-auto">
               
               {/* BOUTON PDF */}
@@ -163,17 +163,17 @@ const App: React.FC = () => {
                 </span>
               </button>
 
-              {/* BOUTON ALERTES */}
+              {/* BOUTON ALERTES (Réduit) */}
               <button 
                 onClick={handleToggleAlerts} 
-                className={`flex flex-col md:flex-row items-center justify-center gap-1 py-2 md:px-4 md:py-2 rounded-xl border-2 transition-all shadow-md active:scale-95 ${
+                className={`flex flex-col md:flex-row items-center justify-center gap-1 md:w-10 md:h-10 py-2 rounded-xl border-2 transition-all shadow-md active:scale-95 ${
                   isAlertsEnabled 
-                    ? 'bg-emerald-500 border-emerald-400 text-white shadow-emerald-100' 
-                    : 'bg-white border-slate-200 text-slate-400 shadow-sm'
+                    ? 'bg-emerald-500 border-emerald-400 text-white' 
+                    : 'bg-white border-slate-200 text-slate-400'
                 }`}
               >
                 <span className="text-sm">{isAlertsEnabled ? '🔔' : '🔕'}</span>
-                <span className="font-black text-[7px] md:text-[10px] uppercase tracking-tighter md:tracking-wider">
+                <span className="md:hidden font-black text-[7px] uppercase tracking-tighter">
                   {isAlertsEnabled ? 'Actif' : 'Off'}
                 </span>
               </button>
