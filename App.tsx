@@ -28,10 +28,9 @@ const App: React.FC = () => {
   const printRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Calcul du lundi de la semaine sélectionnée
   const currentWeekStart = startOfDay(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }));
-  const currentWeekEnd = addDays(currentWeekStart, 4); // Vendredi
-  const weekLabel = `${format(currentWeekStart, 'dd MMM', { locale: fr })} - ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
+  const currentWeekEnd = addDays(currentWeekStart, 4);
+  const weekLabel = `${format(currentWeekStart, 'dd MMM', { locale: fr })} - ${format(currentWeekEnd, 'dd MMM', { locale: fr })}`;
 
   useEffect(() => {
     const saved = localStorage.getItem('cuisine_tasks');
@@ -100,24 +99,18 @@ const App: React.FC = () => {
       if (task.id === taskId) {
         const oldStart = parseISO(task.startTime);
         const updatedStart = setMinutes(setHours(newDate, oldStart.getHours()), oldStart.getMinutes());
-        return { 
-          ...task, 
-          startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"), 
-          shift: newShift, 
-          dayOfWeek: (updatedStart.getDay() + 6) % 7 
-        };
+        return { ...task, startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"), shift: newShift, dayOfWeek: (updatedStart.getDay() + 6) % 7 };
       }
       return task;
     }));
   };
 
-  // --- GESTION IMPORT / EXPORT ---
   const handleExportData = () => {
     const dataBlob = new Blob([JSON.stringify(tasks, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `backup_cuisine_${format(new Date(), 'dd-MM-yyyy')}.json`;
+    link.download = `backup_cuisine.json`;
     link.click();
     setIsSettingsOpen(false);
   };
@@ -129,11 +122,8 @@ const App: React.FC = () => {
     reader.onload = (event) => {
       try {
         const imported = JSON.parse(event.target?.result as string);
-        if (Array.isArray(imported)) {
-          setTasks(imported);
-          alert("Importation réussie !");
-        }
-      } catch (err) { alert("Fichier invalide"); }
+        if (Array.isArray(imported)) { setTasks(imported); alert("Import réussi !"); }
+      } catch (err) { alert("Erreur fichier"); }
     };
     reader.readAsText(file);
     setIsSettingsOpen(false);
@@ -160,44 +150,77 @@ const App: React.FC = () => {
     .sort((a, b) => a.remainingSeconds - b.remainingSeconds);
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 overflow-x-hidden flex flex-col">
-      <div className="no-print bg-gray-900 text-white py-1.5 px-4 flex justify-between items-center text-[8px] font-black uppercase border-b border-gray-800">
-        <span className="tracking-[0.4em]">BISTROT M</span>
-        <span className="tracking-[0.4em] opacity-40">PRODUCTION SYSTEM v2.5</span>
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 overflow-x-hidden flex flex-col font-sans">
+      {/* Top Status Bar (Ultra Fine) */}
+      <div className="no-print bg-[#0F172A] text-white py-1 px-4 flex justify-between items-center text-[7px] font-bold uppercase tracking-[0.3em] opacity-90">
+        <span>BISTROT M</span>
+        <span>PRODUCTION SYSTEM v2.6</span>
       </div>
 
-      <header className="no-print bg-white border-b shadow-sm sticky top-0 z-[60]">
-        <div className="max-w-7xl mx-auto px-2 h-14 flex items-center justify-between gap-1">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="bg-blue-600 w-8 h-8 flex items-center justify-center rounded-lg text-white font-black text-lg shadow-md">🍽️</div>
-            <h1 className="font-black text-gray-900 text-xs sm:text-base tracking-tight uppercase leading-none">PLANNER</h1>
+      <header className="no-print bg-white border-b border-slate-200 sticky top-0 z-[60] shadow-sm">
+        <div className="max-w-7xl mx-auto px-3 h-20 sm:h-24 flex items-center justify-between gap-2">
+          
+          {/* LOGO & TITRE : Plus imposant */}
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 w-11 h-11 sm:w-14 sm:h-14 flex items-center justify-center rounded-2xl text-white text-xl sm:text-2xl shadow-lg shadow-blue-200 ring-2 ring-white">
+              🍽️
+            </div>
+            <div className="flex flex-col">
+              <h1 className="font-black text-slate-900 text-sm sm:text-xl tracking-tighter uppercase leading-none">
+                Planner
+              </h1>
+              <span className="text-[8px] sm:text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-0.5">Cuisine</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1 sm:gap-3 flex-1 justify-end">
-            <div className="flex items-center bg-gray-100 rounded-xl p-0.5">
-              <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-7 h-7 hover:bg-white rounded-lg font-black text-sm">‹</button>
-              <span className="px-1 text-[9px] font-black min-w-[90px] text-center text-gray-600 uppercase tracking-tighter">{weekLabel}</span>
-              <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-7 h-7 hover:bg-white rounded-lg font-black text-sm">›</button>
+          {/* CENTRE : NAVIGATION DATES (Capsule design) */}
+          <div className="flex items-center bg-slate-100/80 backdrop-blur rounded-2xl p-1 border border-slate-200 shadow-inner">
+            <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-9 h-9 sm:w-11 sm:h-11 hover:bg-white hover:shadow-sm rounded-xl transition-all flex items-center justify-center text-lg text-slate-600 font-bold">‹</button>
+            <div className="px-2 sm:px-4 flex flex-col items-center min-w-[100px] sm:min-w-[140px]">
+              <span className="text-[10px] sm:text-xs font-black text-slate-800 uppercase tracking-tight">Semaine</span>
+              <span className="text-[8px] sm:text-[9px] font-bold text-slate-500 uppercase">{weekLabel}</span>
             </div>
+            <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-9 h-9 sm:w-11 sm:h-11 hover:bg-white hover:shadow-sm rounded-xl transition-all flex items-center justify-center text-lg text-slate-600 font-bold">›</button>
+          </div>
 
+          {/* DROITE : ACTIONS (Plus gros boutons) */}
+          <div className="flex items-center gap-2">
             <button 
               onClick={handleRequestPermission}
-              className={`w-8 h-8 flex items-center justify-center rounded-xl border transition-all ${
-                notifPermission === 'granted' ? 'bg-green-50 text-green-600 border-green-200' : 'bg-white text-gray-300 border-gray-100'
+              className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl border-2 transition-all shadow-sm ${
+                notifPermission === 'granted' 
+                  ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                  : 'bg-white text-slate-300 border-slate-100 active:scale-90'
               }`}
             >
-              {notifPermission === 'granted' ? '🔔' : '🔕'}
+              <span className="text-lg">{notifPermission === 'granted' ? '🔔' : '🔕'}</span>
             </button>
             
             <div className="relative">
-              <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className={`w-8 h-8 flex items-center justify-center rounded-xl border transition-all ${isSettingsOpen ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
-                <span className="text-sm">⚙️</span>
+              <button 
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                className={`w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-2xl border-2 transition-all shadow-sm active:scale-90 ${
+                  isSettingsOpen ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white text-slate-600 border-slate-100'
+                }`}
+              >
+                <span className="text-lg">⚙️</span>
               </button>
+
               {isSettingsOpen && (
-                <div className="absolute top-full right-0 mt-2 w-44 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-[70]">
-                  <button onClick={handleExportData} className="w-full text-left px-4 py-2 text-[10px] font-black text-gray-700 hover:bg-blue-50 flex items-center gap-3 uppercase"><span>📤</span> Exporter</button>
-                  <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-4 py-2 text-[10px] font-black text-gray-700 hover:bg-blue-50 flex items-center gap-3 uppercase"><span>📥</span> Importer</button>
-                  <button onClick={() => { if(confirm("Vider toutes les tâches ?")) setTasks([]); setIsSettingsOpen(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black text-red-600 hover:bg-red-50 flex items-center gap-3 uppercase"><span>🗑️</span> Reset</button>
+                <div className="absolute top-[120%] right-0 w-48 bg-white border border-slate-200 rounded-[2rem] shadow-2xl py-3 z-[70] animate-in fade-in zoom-in duration-200">
+                  <div className="px-5 pb-2 mb-2 border-b border-slate-50">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Réglages</span>
+                  </div>
+                  <button onClick={handleExportData} className="w-full text-left px-5 py-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-3 uppercase">
+                    <span className="text-base">📤</span> Exporter
+                  </button>
+                  <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-5 py-3 text-[10px] font-black text-slate-700 hover:bg-slate-50 flex items-center gap-3 uppercase">
+                    <span className="text-base">📥</span> Importer
+                  </button>
+                  <div className="mx-4 my-2 border-t border-slate-100"></div>
+                  <button onClick={() => { if(confirm("Supprimer tout ?")) setTasks([]); setIsSettingsOpen(false); }} className="w-full text-left px-5 py-3 text-[10px] font-black text-rose-600 hover:bg-rose-50 flex items-center gap-3 uppercase">
+                    <span className="text-base">🗑️</span> Reset
+                  </button>
                 </div>
               )}
             </div>
@@ -206,30 +229,37 @@ const App: React.FC = () => {
         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
       </header>
 
-      <main className="no-print w-full max-w-7xl mx-auto px-1 sm:px-4 mt-4 flex-1">
-        <div className="w-full overflow-hidden">
-          <WeeklyCalendar 
-            tasks={tasks}
-            currentTime={currentTime}
-            onAddTask={handleAddTask}
-            onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
-            onDeleteTask={(id) => setTasks(prev => prev.filter(t => t.id !== id))}
-            onDuplicateTask={handleDuplicateTask}
-            onMoveTask={handleMoveTask}
-            weekStartDate={currentWeekStart}
-          />
-        </div>
+      <main className="no-print w-full max-w-7xl mx-auto px-2 sm:px-4 mt-6 flex-1">
+        <WeeklyCalendar 
+          tasks={tasks}
+          currentTime={currentTime}
+          onAddTask={handleAddTask}
+          onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
+          onDeleteTask={(id) => setTasks(prev => prev.filter(t => t.id !== id))}
+          onDuplicateTask={handleDuplicateTask}
+          onMoveTask={handleMoveTask}
+          weekStartDate={currentWeekStart}
+        />
         
+        {/* Alerts Monitor */}
         {activeAlerts.length > 0 && (
-          <div className="mt-8 px-2">
-            <h3 className="text-[10px] font-black text-gray-400 mb-3 flex items-center gap-2 uppercase tracking-[0.2em]">MONITOR</h3>
-            <div className="flex flex-col gap-2">
+          <div className="mt-10 px-2 pb-10">
+            <h3 className="text-[11px] font-black text-slate-400 mb-4 flex items-center gap-3 uppercase tracking-[0.3em]">
+              <div className="h-1 flex-1 bg-slate-200 rounded-full"></div>
+              Live Monitor
+              <div className="h-1 flex-1 bg-slate-200 rounded-full"></div>
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {activeAlerts.map(alertTask => (
-                <div key={alertTask.id} className={`p-3 rounded-2xl border flex items-center gap-3 bg-white ${alertTask.status === 'ongoing' ? 'border-orange-200' : 'border-blue-100'}`}>
-                  <span className="text-xl">{alertTask.status === 'ongoing' ? '🔥' : '🕒'}</span>
+                <div key={alertTask.id} className={`p-4 rounded-3xl border-2 flex items-center gap-4 bg-white shadow-sm transition-all ${alertTask.status === 'ongoing' ? 'border-orange-100' : 'border-blue-50'}`}>
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-inner ${alertTask.status === 'ongoing' ? 'bg-orange-100' : 'bg-blue-50'}`}>
+                    {alertTask.status === 'ongoing' ? '🔥' : '🕒'}
+                  </div>
                   <div className="flex-1">
-                    <div className="font-black text-[11px] uppercase truncate">{alertTask.name}</div>
-                    <div className="text-[9px] font-bold text-gray-400 uppercase">{Math.floor(alertTask.remainingSeconds / 60)} min restantes</div>
+                    <div className="font-black text-xs uppercase text-slate-800">{alertTask.name}</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
+                      Reste {Math.floor(alertTask.remainingSeconds / 60)} min
+                    </div>
                   </div>
                 </div>
               ))}
@@ -238,9 +268,19 @@ const App: React.FC = () => {
         )}
       </main>
 
-      <div className="fixed bottom-4 right-4 z-40 no-print">
-        <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-gray-900 text-white p-4 rounded-full shadow-2xl transition-all active:scale-95 disabled:opacity-50 border border-white/20">
-          {isGeneratingPdf ? '⏳' : <span className="font-black text-[10px]">PDF</span>}
+      {/* FAB - Bouton PDF Plus gros et stylé */}
+      <div className="fixed bottom-6 right-6 z-40 no-print">
+        <button 
+          onClick={handleDownloadPDF}
+          disabled={isGeneratingPdf}
+          className="bg-slate-900 text-white w-16 h-16 rounded-[2rem] shadow-2xl shadow-slate-400 flex flex-col items-center justify-center transition-all active:scale-90 disabled:opacity-50 border-2 border-slate-700"
+        >
+          {isGeneratingPdf ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : (
+            <>
+              <span className="text-xl">📄</span>
+              <span className="font-black text-[9px] mt-1">PDF</span>
+            </>
+          )}
         </button>
       </div>
 
