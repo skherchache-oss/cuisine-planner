@@ -23,41 +23,39 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
   });
 
   return (
-    <div className="bg-white text-black" style={{ width: '297mm' }}>
+    <div className="bg-white text-black font-sans" style={{ width: '290mm', margin: '0 auto' }}>
       
       {/* SECTION 1 : PLANNING HEBDOMADAIRE */}
-      <div className="html2pdf__page-break" style={{ padding: '10mm', minHeight: '210mm' }}>
-        <div className="flex justify-between items-center mb-6 border-b-[5px] border-black pb-4">
-          <div className="flex items-center gap-5">
-            <div className="bg-black text-white px-5 py-2 text-3xl font-black rounded-xl uppercase tracking-tighter">BISTROT M</div>
-            <div>
-              <h1 className="text-xl font-black uppercase tracking-tight">Registre de Production Hebdomadaire</h1>
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em]">Traçabilité HACCP - Management de Brigade</p>
-            </div>
+      <div className="html2pdf__page-break" style={{ padding: '5mm' }}>
+        <div className="flex justify-between items-end mb-4 border-b border-gray-300 pb-2">
+          <div>
+            <h1 className="text-2xl font-bold uppercase tracking-tight">Registre de Production</h1>
+            <p className="text-[9px] text-gray-500 font-medium uppercase tracking-widest">Traçabilité HACCP • Bistrot M</p>
           </div>
-          <div className="border-[4px] border-black px-8 py-3 font-black text-xl uppercase bg-gray-50 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)]">
-            SEMAINE DU : {weekLabel}
+          <div className="text-right">
+            <div className="text-sm font-bold uppercase">Semaine du {weekLabel}</div>
+            <div className="text-[8px] text-gray-400 italic">Imprimé le {format(new Date(), 'dd/MM/yyyy')}</div>
           </div>
         </div>
 
-        <table className="w-full border-collapse border-[3px] border-black table-fixed">
+        <table className="w-full border-collapse table-fixed">
           <thead>
-            <tr className="bg-gray-100">
-              <th className="border-[2px] border-black p-3 w-[80px] text-[11px] uppercase font-black">Shift</th>
+            <tr className="bg-gray-50">
+              <th className="border border-gray-300 p-2 w-[60px] text-[10px] uppercase font-bold">Shift</th>
               {weekDates.map(date => (
-                <th key={date.toString()} className="border-[2px] border-black p-3 font-black text-center uppercase text-[12px]">
-                  <div className="text-black">{format(date, 'EEEE', { locale: fr })}</div>
-                  <div className="text-[10px] text-gray-400 font-bold">{format(date, 'dd/MM', { locale: fr })}</div>
+                <th key={date.toString()} className="border border-gray-300 p-2 font-bold text-center uppercase text-[11px]">
+                  <div>{format(date, 'EEEE', { locale: fr })}</div>
+                  <div className="text-[9px] text-gray-400">{format(date, 'dd/MM', { locale: fr })}</div>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {SHIFTS.map(shift => (
-              <tr key={shift.id} className="avoid-break">
-                <td className="border-[2px] border-black p-3 bg-gray-50 align-middle text-center">
-                  <div className="text-3xl mb-1">{shift.icon}</div>
-                  <div className="text-[9px] font-black uppercase leading-tight">{shift.label}</div>
+              <tr key={shift.id}>
+                <td className="border border-gray-300 p-1 bg-gray-50 align-middle text-center">
+                  <div className="text-xl">{shift.icon}</div>
+                  <div className="text-[8px] font-bold uppercase leading-tight">{shift.label}</div>
                 </td>
                 {weekDates.map((date, dayIdx) => {
                   const dayTasks = tasks.filter(t => 
@@ -66,24 +64,23 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
                   );
                   
                   return (
-                    <td key={dayIdx} className="border-[2px] border-black p-2 align-top bg-white h-full min-h-[160px]">
-                      <div className="flex flex-col gap-3">
+                    <td key={dayIdx} className="border border-gray-300 p-1 align-top bg-white" style={{ minHeight: '150px' }}>
+                      <div className="flex flex-col gap-2">
                         {dayTasks.map(task => {
                           const expiry = calculateExpiry(task.startTime, task.cookTime, task.shelfLifeDays);
                           return (
-                            <div key={task.id} className="avoid-break border-[2px] border-black p-2 rounded-md bg-white flex flex-col gap-1.5 shadow-sm">
-                              <div className="flex justify-between items-start border-b-[1.5px] border-black pb-1.5 mb-1.5">
-                                <span className="font-black uppercase text-[10px] leading-none flex-1 pr-2">{task.name}</span>
-                                <span className="font-black text-[9px] bg-black text-white px-1.5 py-0.5 rounded-sm whitespace-nowrap">
-                                  {format(parseISO(task.startTime), 'HH:mm')}
-                                </span>
+                            <div key={task.id} className="avoid-break border border-gray-200 p-1.5 rounded bg-white flex flex-col gap-1">
+                              <div className="flex justify-between items-start border-b border-gray-100 pb-1 mb-1">
+                                <span className="font-bold uppercase text-[9px] leading-tight flex-1 pr-1">{task.name}</span>
+                                <span className="font-mono text-[8px] bg-gray-100 px-1 rounded">{format(parseISO(task.startTime), 'HH:mm')}</span>
                               </div>
-                              <div className="grid grid-cols-2 text-[8px] font-bold leading-none gap-y-1.5">
+                              <div className="grid grid-cols-2 text-[7px] gap-y-1">
                                 <span className="truncate">👤 {task.responsible}</span>
-                                <span className="text-right">🔥 {formatDuration(task.cookTime)}</span>
-                                <span className="col-span-2 font-black bg-gray-100 border border-black/10 px-1.5 py-1 text-center rounded">
-                                  DLC: {format(expiry, 'dd/MM HH:mm')}
-                                </span>
+                                <span className="text-right font-medium">DLC: {format(expiry, 'dd/MM HH:mm')}</span>
+                              </div>
+                              <div className="flex gap-1 mt-1">
+                                <div className="flex-1 border-b border-gray-300 h-3"></div>
+                                <div className="w-6 border-b border-gray-300 h-3"></div>
                               </div>
                             </div>
                           );
@@ -100,14 +97,14 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
 
       <div className="html2pdf__page-break"></div>
 
-      {/* SECTION 2 : FICHES INDIVIDUELLES (CORRIGÉES) */}
-      <div style={{ padding: '10mm', width: '297mm' }}>
-        <h2 className="text-2xl font-black uppercase border-b-[6px] border-black pb-3 mb-8 flex items-center gap-5">
-          <span className="bg-black text-white p-2 rounded-lg text-xl">📋</span> 
-          <span>Fiches Techniques & Instructions de Poste</span>
+      {/* SECTION 2 : FICHES INDIVIDUELLES ÉPURÉES */}
+      <div style={{ padding: '5mm' }}>
+        <h2 className="text-xl font-bold uppercase border-b-2 border-black pb-2 mb-6 flex items-center gap-3">
+          <span>📋</span> 
+          <span>Fiches Techniques & Instructions</span>
         </h2>
         
-        <div className="grid grid-cols-2 gap-8">
+        <div className="grid grid-cols-2 gap-4">
           {sortedTasks.map((task) => {
             const startTime = parseISO(task.startTime);
             const expiry = calculateExpiry(task.startTime, task.cookTime, task.shelfLifeDays);
@@ -115,52 +112,52 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
             return (
               <div 
                 key={task.id} 
-                className="avoid-break border-[3px] border-black rounded-2xl overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)] flex flex-col bg-white"
+                className="avoid-break border border-gray-300 rounded-lg overflow-hidden flex flex-col bg-white"
               >
-                <div className="bg-gray-900 text-white p-4 border-b-[3px] border-black flex justify-between items-center">
-                  <div className="font-black text-base uppercase tracking-widest">{task.name}</div>
-                  <div className="text-[10px] font-black bg-white/20 px-3 py-1 rounded-full uppercase">
+                {/* Header plus fin */}
+                <div className="bg-gray-100 p-3 border-b border-gray-300 flex justify-between items-center">
+                  <div className="font-bold text-sm uppercase">{task.name}</div>
+                  <div className="text-[9px] font-bold text-gray-500 uppercase">
                     {format(startTime, 'EEEE dd MMM', { locale: fr })}
                   </div>
                 </div>
 
-                <div className="p-5 grid grid-cols-2 gap-6">
-                  <div className="space-y-4 border-r-2 border-gray-100 pr-6">
-                    <div className="flex justify-between items-center text-[11px] font-bold border-b border-gray-100 pb-2">
-                      <span className="text-gray-400 uppercase tracking-widest">Responsable</span>
-                      <span className="text-blue-700 font-black">{task.responsible}</span>
+                <div className="p-4 grid grid-cols-2 gap-4">
+                  {/* Colonne Gauche : Données */}
+                  <div className="space-y-2 text-[10px] border-r border-gray-100 pr-4">
+                    <div className="flex justify-between border-b border-gray-50 pb-1">
+                      <span className="text-gray-400 uppercase">Chef</span>
+                      <span className="font-bold">{task.responsible}</span>
                     </div>
-                    <div className="flex justify-between items-center text-[11px] font-bold border-b border-gray-100 pb-2">
-                      <span className="text-gray-400 uppercase tracking-widest">Cuisson</span>
-                      <span className="bg-orange-100 px-2 py-0.5 rounded-md font-black">{formatDuration(task.cookTime)}</span>
+                    <div className="flex justify-between border-b border-gray-50 pb-1">
+                      <span className="text-gray-400 uppercase">Cuisson</span>
+                      <span className="font-bold">{formatDuration(task.cookTime)}</span>
                     </div>
-                    <div className="flex justify-between items-center text-[11px] font-bold border-b border-gray-100 pb-2">
-                      <span className="text-gray-400 uppercase tracking-widest">Prépa / Cond.</span>
-                      <span className="font-black">{task.prepTime + (task.packingTime || 0)} min</span>
+                    <div className="flex justify-between border-b border-gray-50 pb-1">
+                      <span className="text-gray-400 uppercase">Prépa+Pack</span>
+                      <span className="font-bold">{task.prepTime + (task.packingTime || 0)} min</span>
                     </div>
-                    <div className="bg-red-50 border-2 border-red-100 p-3 mt-4 rounded-xl text-center">
-                      <div className="text-[9px] font-black text-red-400 uppercase mb-1 tracking-widest">DLC MAX CALCULÉE</div>
-                      <div className="text-sm font-black text-red-900">{format(expiry, 'dd/MM/yyyy HH:mm')}</div>
+                    <div className="bg-gray-50 p-2 mt-2 rounded border border-gray-100 text-center">
+                      <div className="text-[8px] text-gray-400 uppercase">DLC Maximum</div>
+                      <div className="font-bold text-red-600">{format(expiry, 'dd/MM/yyyy HH:mm')}</div>
                     </div>
                   </div>
 
-                  <div className="text-[11px] flex flex-col">
-                    <div className="font-black uppercase text-gray-300 text-[9px] mb-3 tracking-[0.2em]">Procédure & Notes</div>
-                    {/* Correction ici : whitespace-pre-wrap pour éviter le texte coupé horizontalement */}
-                    <div className="italic leading-relaxed text-gray-800 bg-gray-50 p-3 rounded-xl border border-gray-100 min-h-[100px] whitespace-pre-wrap">
-                      {task.comments || "Respecter les protocoles d'hygiène habituels."}
+                  {/* Colonne Droite : Instructions (Espace maximum ici) */}
+                  <div className="text-[10px] flex flex-col">
+                    <div className="font-bold uppercase text-gray-300 text-[8px] mb-1">Procédure</div>
+                    <div className="leading-snug text-gray-700 whitespace-pre-wrap italic">
+                      {task.comments || "Suivre le protocole standard."}
                     </div>
                     
-                    <div className="mt-5 pt-4 border-t-2 border-black/5">
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[8px] font-bold uppercase text-gray-400 w-12">Lot :</span>
-                          <div className="flex-1 border-b-2 border-gray-100 h-4"></div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-[8px] font-bold uppercase text-gray-400 w-12">T° Refr. :</span>
-                          <div className="flex-1 border-b-2 border-gray-100 h-4"></div>
-                        </div>
+                    <div className="mt-auto pt-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[8px] text-gray-400 uppercase">Lot:</span>
+                        <div className="flex-1 border-b border-gray-200 h-3"></div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[8px] text-gray-400 uppercase">T°:</span>
+                        <div className="flex-1 border-b border-gray-200 h-3"></div>
                       </div>
                     </div>
                   </div>
