@@ -19,11 +19,11 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page { size: A4 landscape; margin: 0; }
-          body { margin: 0; -webkit-print-color-adjust: exact; }
+          body { margin: 0; -webkit-print-color-adjust: exact; font-family: sans-serif; }
           #print-area { 
             width: 297mm !important; 
             min-height: 210mm !important; 
-            padding: 10mm !important;
+            padding: 8mm !important;
             transform: none !important;
           }
         }
@@ -32,31 +32,36 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
           min-height: 210mm;
           box-sizing: border-box;
           background: white;
-          font-family: sans-serif;
+          color: black;
+        }
+        /* Assure que le texte ne soit jamais coupé en milieu de ligne */
+        .task-card {
+          page-break-inside: avoid;
+          break-inside: avoid;
         }
       `}} />
 
       <div id="print-area" className="mx-auto">
         {/* HEADER */}
-        <div className="flex justify-between items-end mb-4 border-b-4 border-slate-900 pb-2">
+        <div className="flex justify-between items-end mb-3 border-b-4 border-black pb-2">
           <div>
-            <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">BISTROT M</h1>
-            <p className="text-[10px] font-bold text-slate-500 uppercase">Registre de Production • HACCP</p>
+            <h1 className="text-2xl font-black text-black uppercase tracking-tighter">BISTROT M</h1>
+            <p className="text-[10px] font-bold text-gray-600 uppercase">Registre de Production • HACCP</p>
           </div>
-          <div className="bg-slate-900 text-white px-4 py-1.5 rounded font-black text-xs uppercase">
+          <div className="bg-black text-white px-4 py-1.5 rounded font-black text-xs uppercase">
             {weekLabel}
           </div>
         </div>
 
-        {/* TABLEAU */}
-        <table className="w-full border-collapse border-2 border-slate-900 table-fixed">
+        {/* TABLEAU : Suppression de table-fixed pour laisser le texte respirer */}
+        <table className="w-full border-collapse border-2 border-black">
           <thead>
-            <tr className="bg-slate-100">
-              <th className="border-2 border-slate-900 w-[50px] p-2 text-[10px] font-black uppercase">Shift</th>
+            <tr className="bg-gray-100">
+              <th className="border-2 border-black w-[45px] p-2 text-[9px] font-black uppercase">Shift</th>
               {weekDates.map(date => (
-                <th key={date.toString()} className="border-2 border-slate-900 p-2 text-center">
-                  <div className="text-sm font-black uppercase">{format(date, 'EEEE', { locale: fr })}</div>
-                  <div className="text-[10px] text-slate-500 font-bold">{format(date, 'dd/MM', { locale: fr })}</div>
+                <th key={date.toString()} className="border-2 border-black p-2 text-center">
+                  <div className="text-xs font-black uppercase">{format(date, 'EEEE', { locale: fr })}</div>
+                  <div className="text-[10px] text-gray-600 font-bold">{format(date, 'dd/MM', { locale: fr })}</div>
                 </th>
               ))}
             </tr>
@@ -64,9 +69,9 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
           <tbody>
             {SHIFTS.map(shift => (
               <tr key={shift.id}>
-                <td className="border-2 border-slate-900 bg-slate-50/50 p-1 text-center align-middle">
+                <td className="border-2 border-black bg-gray-50 p-1 text-center align-middle">
                   <div className="text-xl">{shift.icon}</div>
-                  <div className="text-[7px] font-black uppercase text-slate-600 leading-none">{shift.label}</div>
+                  <div className="text-[7px] font-black uppercase text-gray-700 leading-none">{shift.label}</div>
                 </td>
 
                 {weekDates.map((date, dayIdx) => {
@@ -75,51 +80,50 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
                   ).sort((a, b) => a.startTime.localeCompare(b.startTime));
                   
                   return (
-                    <td key={dayIdx} className="border-2 border-slate-900 p-1 align-top bg-white">
-                      <div className="flex flex-col gap-2">
+                    <td key={dayIdx} className="border-2 border-black p-1 align-top bg-white">
+                      <div className="flex flex-col gap-1.5">
                         {dayTasks.map(task => {
                           const expiry = calculateExpiry(task.startTime, task.cookTime, task.shelfLifeDays);
                           return (
                             <div 
                               key={task.id} 
-                              className="border border-slate-300 rounded p-1.5 bg-white flex flex-col gap-1"
-                              style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}
+                              className="task-card border border-gray-400 rounded p-1.5 bg-white flex flex-col"
                             >
-                              {/* HEURE + NOM (Retour à la ligne si long) */}
-                              <div className="flex flex-wrap items-center gap-1 border-b border-slate-100 pb-1">
-                                <span className="text-[8px] font-black bg-slate-800 text-white px-1 py-0.5 rounded shrink-0">
+                              {/* LIGNE 1 : HEURE + NOM (WRAP AUTOMATIQUE) */}
+                              <div className="flex flex-wrap items-center gap-1 border-b border-gray-200 pb-1 mb-1">
+                                <span className="text-[8px] font-black bg-black text-white px-1 py-0.5 rounded shrink-0">
                                   {format(parseISO(task.startTime), 'HH:mm')}
                                 </span>
-                                <span className="text-[9px] font-black uppercase text-slate-900 leading-tight flex-1 min-w-0 break-words">
+                                <span className="text-[9px] font-black uppercase text-black leading-tight break-words flex-1 min-w-[60px]">
                                   {task.name}
                                 </span>
                               </div>
 
-                              {/* RESPONSABLE ET TEMPS (Pas de rognage) */}
-                              <div className="flex justify-between items-start text-[8.5px] font-bold text-slate-700">
-                                <span className="break-words flex-1 pr-1">👤 {task.responsible}</span>
-                                <span className="shrink-0 text-slate-400 italic font-medium">{task.cookTime}m</span>
+                              {/* LIGNE 2 : RESPONSABLE (SANS COUPURE) */}
+                              <div className="flex justify-between items-start text-[8px] font-bold mb-1">
+                                <span className="text-black break-words flex-1">👤 {task.responsible}</span>
+                                <span className="text-gray-500 ml-1 italic">{task.cookTime}m</span>
                               </div>
 
-                              {/* NOTES (Affichage intégral) */}
+                              {/* LIGNE 3 : NOTES (SI PRÉSENTES) */}
                               {task.comments && (
-                                <div className="text-[7.5px] text-slate-600 leading-tight italic bg-slate-50 p-1 rounded border-l-2 border-slate-200 break-words">
+                                <div className="text-[7.5px] text-gray-700 leading-tight italic bg-gray-50 p-1 rounded border-l border-gray-300 mb-1 break-words">
                                   {task.comments}
                                 </div>
                               )}
 
-                              {/* DLC */}
-                              <div className="text-[8px] font-black text-rose-700">
+                              {/* LIGNE 4 : DLC */}
+                              <div className="text-[8px] font-black text-red-700 mt-auto">
                                 DLC: {format(expiry, 'dd/MM HH:mm')}
                               </div>
 
-                              {/* LIGNES DE SAISIE */}
-                              <div className="flex justify-between items-end gap-1 mt-1">
-                                <div className="flex-1 border-b border-slate-300 h-3">
-                                  <span className="text-[5px] text-slate-400 font-bold uppercase">Lot</span>
+                              {/* LIGNES DE SAISIE MANUELLE */}
+                              <div className="flex justify-between items-end gap-1 mt-1 border-t border-gray-100 pt-1">
+                                <div className="flex-1 border-b border-gray-400 h-3">
+                                  <span className="text-[5px] text-gray-500 font-bold uppercase">Lot No.</span>
                                 </div>
-                                <div className="w-6 border-b border-slate-300 h-3 text-center">
-                                  <span className="text-[5px] text-slate-400 font-bold uppercase">T°</span>
+                                <div className="w-6 border-b border-gray-400 h-3 text-center">
+                                  <span className="text-[5px] text-gray-500 font-bold uppercase">T°</span>
                                 </div>
                               </div>
                             </div>
@@ -135,13 +139,13 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
         </table>
 
         {/* FOOTER */}
-        <div className="mt-4 flex justify-between items-start border-t-2 border-slate-900 pt-2">
-          <p className="text-[8px] font-bold text-slate-500 max-w-[65%] leading-tight uppercase">
+        <div className="mt-4 flex justify-between items-start border-t-2 border-black pt-2">
+          <p className="text-[8px] font-bold text-gray-600 max-w-[70%] leading-tight uppercase">
             🚨 CONTRÔLE CRITIQUE : TEMPÉRATURES DE CUISSON & DLC OBLIGATOIRES. 
-            VÉRIFIER L'ÉTAT DES MATIÈRES PREMIÈRES.
+            VÉRIFIER L'INTÉGRITÉ DES EMBALLAGES ET LA PROPRETÉ DES CONTENANTS.
           </p>
-          <div className="text-right border-b border-slate-300 w-32 pb-4">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Visa</span>
+          <div className="text-right border-b-2 border-gray-400 w-32 pb-4">
+            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">VISA CHEF</span>
           </div>
         </div>
       </div>

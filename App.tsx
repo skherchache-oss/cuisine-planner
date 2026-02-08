@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { format, addWeeks, startOfWeek, addDays, setHours, setMinutes, startOfDay, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import jsPDF from 'jsPDF';
+import jsPDF from 'jspdf'; // Correction de l'import ici (jspdf au lieu de jsPDF)
 import html2canvas from 'html2canvas';
 
 // Imports types, constantes et services
@@ -125,7 +125,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans overflow-x-hidden">
-      {/* Barre supérieure discrète */}
+      {/* Barre supérieure */}
       <div className="bg-[#0F172A] text-white py-1 px-4 flex justify-between items-center shrink-0">
         <span className="font-black text-[8px] uppercase tracking-[0.2em]">BISTROT M — Kitchen Manager</span>
         <span className="text-[9px] font-bold">{format(currentTime, 'HH:mm', { locale: fr })}</span>
@@ -148,10 +148,10 @@ const App: React.FC = () => {
               </button>
             </div>
 
-            {/* ACTION BAR : Uniquement PDF encadré, les autres sont juste des icônes */}
-            <div className="flex items-center justify-end gap-4 w-full md:w-auto">
+            {/* ACTION BAR */}
+            <div className="flex items-center justify-end gap-5 w-full md:w-auto">
               
-              {/* BOUTON PDF (Le seul avec encadré) */}
+              {/* BOUTON PDF */}
               <button 
                 onClick={handleDownloadPDF} 
                 disabled={isGeneratingPdf}
@@ -163,20 +163,18 @@ const App: React.FC = () => {
                 </span>
               </button>
 
-              {/* ICONE ALERTE (Sans encadré) */}
+              {/* ICONE ALERTE (Juste l'icône) */}
               <button 
                 onClick={handleToggleAlerts} 
-                className={`text-xl transition-all active:scale-90 ${isAlertsEnabled ? 'grayscale-0' : 'grayscale opacity-30'}`}
-                title="Alertes"
+                className={`text-2xl transition-all active:scale-90 ${isAlertsEnabled ? 'grayscale-0' : 'grayscale opacity-30'}`}
               >
                 {isAlertsEnabled ? '🔔' : '🔕'}
               </button>
 
-              {/* ICONE PARAMÈTRES (Sans encadré) */}
+              {/* ICONE PARAMÈTRES (Juste l'icône) */}
               <button 
                 onClick={() => setIsSettingsOpen(true)} 
-                className="text-xl transition-all active:scale-90 hover:rotate-45"
-                title="Paramètres"
+                className="text-2xl transition-all active:scale-90 hover:rotate-12 text-slate-700"
               >
                 ⚙️
               </button>
