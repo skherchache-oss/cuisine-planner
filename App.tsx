@@ -36,14 +36,23 @@ const App: React.FC = () => {
 
     try {
       const element = printRef.current;
-      // On rend l'élément visible le temps de la capture
+      // On rend l'élément visible et bien positionné pour la capture
       element.style.display = 'block';
+      element.style.position = 'fixed';
+      element.style.left = '0';
+      element.style.top = '0';
+      element.style.zIndex = '9999';
+      
+      // CRUCIAL : On attend que React dessine les données dans le composant
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
-        width: 1122, // Largeur A4 Paysage
+        width: 1122,
+        windowWidth: 1122,
+        backgroundColor: '#ffffff'
       });
 
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
@@ -54,22 +63,28 @@ const App: React.FC = () => {
       });
 
       pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210);
-      pdf.save(`Planning_Cuisine_${format(currentWeekStart, 'yyyy-MM-dd')}.pdf`);
+      pdf.save(`Planning_${format(currentWeekStart, 'yyyy-MM-dd')}.pdf`);
       
     } catch (error) {
       console.error(error);
       alert("Erreur lors de la création du PDF");
     } finally {
-      if (printRef.current) printRef.current.style.display = 'none';
+      if (printRef.current) {
+        printRef.current.style.display = 'none';
+        printRef.current.style.position = 'absolute';
+        printRef.current.style.left = '-10000px';
+      }
       setIsGenerating(false);
     }
   };
 
+  // Filtrage ultra-simple par comparaison de chaînes (YYYY-MM-DD)
   const tasksForCurrentWeek = tasks.filter(t => {
-    const tDate = parseISO(t.startTime);
-    const start = currentWeekStart;
-    const end = addDays(currentWeekStart, 7);
-    return tDate >= start && tDate < end;
+    const tDateStr = t.startTime.substring(0, 10);
+    const weekDays = Array.from({ length: 7 }, (_, i) => 
+      format(addDays(currentWeekStart, i), 'yyyy-MM-dd')
+    );
+    return weekDays.includes(tDateStr);
   });
 
   return (
@@ -102,7 +117,7 @@ const App: React.FC = () => {
               shift: shift,
               color: 'bg-blue-100',
               comments: ''
-            });
+            } as PrepTask);
             setIsModalOpen(true);
           }}
           onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
@@ -113,17 +128,15 @@ const App: React.FC = () => {
         <button 
           onClick={handleDownloadPDF} 
           disabled={isGenerating}
-          className="w-full max-w-xs bg-black text-white py-4 rounded-2xl font-black uppercase shadow-2xl disabled:opacity-50 active:scale-95 transition-transform"
+          className="w-full max-w-xs bg-black text-white py-4 rounded-2xl font-black uppercase shadow-2xl disabled:opacity-50"
         >
-          {isGenerating ? "⏳ Création du PDF..." : "📄 Exporter PDF"}
+          {isGenerating ? "⏳ Création..." : "📄 Exporter PDF"}
         </button>
       </div>
 
-      {/* ZONE INVISIBLE POUR LA CAPTURE */}
-      <div style={{ position: 'absolute', left: '-10000px', top: 0 }}>
-        <div ref={printRef} style={{ display: 'none' }}>
-          <PrintLayout tasks={tasksForCurrentWeek} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
-        </div>
+      {/* ZONE DE CAPTURE (Invisible à l'écran mais accessible à html2canvas) */}
+      <div ref={printRef} style={{ display: 'none', position: 'absolute', left: '-10000px' }}>
+        <PrintLayout tasks={tasksForCurrentWeek} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
       </div>
 
       {isModalOpen && (

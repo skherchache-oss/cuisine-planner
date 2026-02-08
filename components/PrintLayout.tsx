@@ -67,12 +67,14 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
                   <div className="text-[8px] font-black uppercase leading-tight">{shift.label}</div>
                 </td>
                 {weekDates.map((dateCol) => {
+                  // On crée la clé de comparaison "YYYY-MM-DD"
                   const dateStr = format(dateCol, 'yyyy-MM-dd');
                   
-                  // FILTRAGE SECURISE POUR LE PDF
+                  // FILTRAGE ROBUSTE PAR CHAÎNE DE CARACTÈRES
                   const dayTasks = tasks.filter(t => {
-                    const taskDateStr = format(parseISO(t.startTime), 'yyyy-MM-dd');
-                    return t.shift === shift.id && taskDateStr === dateStr;
+                    // On prend les 10 premiers caractères du startTime ISO
+                    const taskDatePart = t.startTime.substring(0, 10);
+                    return t.shift === shift.id && taskDatePart === dateStr;
                   });
                   
                   return (
@@ -85,7 +87,7 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
                             </div>
                             <div className="flex justify-between items-center text-[6.5px] font-bold">
                               <span className="truncate max-w-[35%]">👤 {task.responsible}</span>
-                              <span className="whitespace-nowrap">🕒 {format(parseISO(task.startTime), 'HH:mm')}</span>
+                              <span className="whitespace-nowrap">🕒 {task.startTime.substring(11, 16)}</span>
                               <span className="whitespace-nowrap">🔥 {formatDuration(task.cookTime)}</span>
                             </div>
                             {task.comments && (
