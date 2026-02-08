@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { format, addWeeks, startOfWeek, addDays, isBefore, addMinutes, isAfter, setHours, setMinutes, startOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { PrepTask, ShiftType } from './types.ts';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+
+// Imports types et constantes (sans .ts pour Vite)
+import { PrepTask, ShiftType } from './types';
+import { STAFF_LIST } from './constants';
+import { checkTasksForAlerts } from './services/notificationService';
+
+// Composants (Vérifie bien que le dossier components est à la racine)
 import WeeklyCalendar from './components/WeeklyCalendar';
 import TaskModal from './components/TaskModal';
 import PrintLayout from './components/PrintLayout';
-import { checkTasksForAlerts, getNotificationStatus } from './services/notificationService';
-import { STAFF_LIST } from './constants.ts';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 const App: React.FC = () => {
   const [tasks, setTasks] = useState<PrepTask[]>([]);
@@ -57,7 +61,6 @@ const App: React.FC = () => {
       const element = printRef.current;
       const container = element.parentElement;
       
-      // On rend temporairement visible pour la capture
       if (container) {
         container.style.left = '0';
         container.style.opacity = '1';
@@ -169,7 +172,7 @@ const App: React.FC = () => {
             
             <button 
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                className="w-9 h-9 flex items-center justify-center rounded-xl border bg-white"
+                className="w-9 h-9 flex items-center justify-center rounded-xl border bg-white shadow-sm"
             >⚙️</button>
             
             {isSettingsOpen && (
@@ -224,19 +227,20 @@ const App: React.FC = () => {
         </button>
       </div>
 
-      {/* ZONE PDF */}
       <div style={{ position: 'absolute', left: '-9999px', top: '0', opacity: 0 }}>
         <div ref={printRef} style={{ width: '297mm' }}>
           <PrintLayout tasks={tasksForCurrentWeek} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
         </div>
       </div>
 
-      <TaskModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveTask}
-        initialTask={editingTask || modalInitialData}
-      />
+      {isModalOpen && (
+        <TaskModal 
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onSave={handleSaveTask}
+          initialTask={editingTask || modalInitialData}
+        />
+      )}
     </div>
   );
 };
