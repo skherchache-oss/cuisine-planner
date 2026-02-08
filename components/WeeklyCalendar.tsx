@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PrepTask, ShiftType } from '../types';
 import { SHIFTS } from '../constants';
+import { formatDuration } from '../utils';
 import { isBefore, addMinutes, isAfter, isSameDay, addDays, format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -48,41 +49,49 @@ const TaskCard: React.FC<TaskCardProps> = ({
       draggable={!isMobile}
       onDragStart={!isMobile && onDragStart ? (e) => onDragStart(e, task.id) : undefined}
       onDragEnd={!isMobile && onDragEnd ? (e) => onDragEnd(e, task.id) : undefined}
-      className={`relative group/task select-none transition-all ${isBeingDragged ? 'scale-95 opacity-50' : 'opacity-100'}`}
+      className={`relative group/task select-none transition-all ${isBeingDragged ? 'scale-90 opacity-20' : 'opacity-100'} ${isMobile ? '' : 'cursor-grab active:cursor-grabbing'}`}
     >
-      <div className="absolute -top-2 -right-1 flex gap-2 z-20">
+      <div className="absolute -top-1.5 -right-1.5 flex gap-1 z-20">
         <button 
           type="button"
           onClick={(e) => { e.stopPropagation(); onDuplicate(task); }}
-          className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white text-xs active:scale-150"
+          className="w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white text-[10px] active:scale-125 md:opacity-0 md:group-hover/task:opacity-100 transition-opacity"
+          title="Dupliquer"
         >📋</button>
         <button 
           type="button"
           onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-          className="w-8 h-8 bg-rose-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white text-sm active:scale-150"
-        >✕</button>
+          className="w-7 h-7 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white text-xs active:scale-125 md:opacity-0 md:group-hover/task:opacity-100 transition-opacity"
+          title="Supprimer"
+        >×</button>
       </div>
 
       <div 
         onClick={() => onEdit(task)}
-        className={`p-5 rounded-2xl border-2 transition-all shadow-md ${
-          isOngoing ? 'border-orange-500 bg-orange-50 ring-4 ring-orange-100' : 'border-slate-100 bg-white'
+        className={`p-3.5 rounded-2xl border-2 shadow-sm transition-all active:scale-[0.98] ${
+          isOngoing ? 'border-orange-400 bg-orange-50 ring-2 ring-orange-100 shadow-orange-100' : 'border-blue-100 bg-white group-hover/task:border-blue-300'
         }`}
       >
-        <div className="flex justify-between items-start mb-2 gap-2">
-          <span className="font-black uppercase text-[14px] text-slate-900 leading-tight">
+        <div className="flex justify-between items-start mb-2.5 pr-10">
+          <span className="font-black uppercase tracking-tight text-[11px] text-gray-900 leading-tight break-words flex-1 pr-2">
             {task.name}
           </span>
-          <span className="text-[11px] font-black bg-slate-900 text-white px-2 py-1 rounded-md whitespace-nowrap">
+          <span className="text-[10px] font-black bg-gray-100 px-2 py-0.5 rounded-lg text-gray-600 whitespace-nowrap">
             {format(start, 'HH:mm')}
           </span>
         </div>
         
-        <div className="flex justify-between items-center mt-3 border-t border-slate-50 pt-3">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">👤 {task.responsible}</span>
-          <span className={`text-[11px] font-black flex items-center gap-1 ${isOngoing ? 'text-orange-600 animate-pulse' : 'text-blue-600'}`}>
-            {isOngoing ? '🔥 EN COURS' : `⏱️ ${task.cookTime}m`}
-          </span>
+        {isOngoing && (
+          <div className="mb-2.5 flex items-center gap-1.5 bg-orange-500 text-white px-2.5 py-1 rounded-full text-[9px] font-black animate-pulse w-fit shadow-sm">
+            <span className="text-[10px]">🔥</span> EN COURS
+          </div>
+        )}
+
+        <div className="flex justify-between items-center text-[10px] font-bold">
+          <span className="text-gray-400 truncate max-w-[80px]">👤 {task.responsible}</span>
+          <div className="flex items-center gap-1">
+            <span className={`font-black ${isOngoing ? 'text-orange-700' : 'text-blue-700'}`}>⏱️ {formatDuration(task.cookTime)}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -105,61 +114,114 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
 
   const weekDates = Array.from({ length: 5 }, (_, i) => addDays(weekStartDate, i));
 
+  // --- LOGIQUE DRAG & DROP ---
+  const handleDragStart = (e: React.DragEvent, taskId: string) => {
+    setDraggedTaskId(taskId);
+    e.dataTransfer.setData('text/plain', taskId);
+    e.dataTransfer.effectAllowed = 'move';
+    
+    const el = document.getElementById(`task-${taskId}`);
+    if (el) {
+      setTimeout(() => { el.style.opacity = '0.3'; }, 0);
+    }
+  };
+
+  const handleDragEnd = (e: React.DragEvent, taskId: string) => {
+    setDraggedTaskId(null);
+    setDropTarget(null);
+    const el = document.getElementById(`task-${taskId}`);
+    if (el) { el.style.opacity = '1'; }
+  };
+
+  const handleDragOver = (e: React.DragEvent, dayIdx: number, shiftId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dropTarget?.dayIdx !== dayIdx || dropTarget?.shiftId !== shiftId) {
+      setDropTarget({ dayIdx, shiftId });
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, dayIdx: number, shiftId: ShiftType) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('text/plain');
+    if (taskId) {
+      onMoveTask(taskId, weekDates[dayIdx], shiftId);
+    }
+    setDropTarget(null);
+    setDraggedTaskId(null);
+  };
+
   return (
-    <div className="w-full px-2">
-      {/* VUE MOBILE : NAVIGATION SANS POINTS BLEUS */}
-      <div className="md:hidden space-y-8">
-        <div className="bg-white border-2 border-slate-200 rounded-[2rem] p-1.5 flex justify-between gap-1 shadow-lg">
-          {weekDates.map((date, idx) => {
-            const isActive = selectedDayIdx === idx;
-            return (
-              <button
-                key={idx}
-                onClick={() => setSelectedDayIdx(idx)}
-                className={`flex-1 flex flex-col items-center py-4 rounded-2xl transition-all ${
-                  isActive ? 'bg-slate-900 text-white shadow-xl scale-[1.05] z-10' : 'text-slate-400'
-                }`}
-              >
-                <span className={`text-[10px] font-black uppercase mb-1 ${isActive ? 'text-blue-400' : ''}`}>
-                  {format(date, 'EEE', { locale: fr })}
-                </span>
-                <span className="text-xl font-black tracking-tighter leading-none">{format(date, 'dd')}</span>
-              </button>
-            );
-          })}
+    <div className="w-full">
+      {/* VUE MOBILE */}
+      <div className="block md:hidden space-y-6 pb-12">
+        <div className="sticky top-[84px] z-40 bg-gray-50/95 backdrop-blur-md pt-2 pb-4 -mx-4 px-4 overflow-x-auto no-scrollbar shadow-sm">
+          <div className="flex gap-2 min-w-full">
+            {weekDates.map((date, idx) => {
+              const dayTasksCount = tasks.filter(t => isSameDay(parseISO(t.startTime), date)).length;
+              const isActive = selectedDayIdx === idx;
+              return (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedDayIdx(idx)}
+                  className={`flex-1 min-w-[75px] flex flex-col items-center py-3.5 rounded-3xl transition-all border-2 relative ${
+                    isActive 
+                      ? 'bg-gray-900 border-gray-900 text-white shadow-xl scale-105 z-10' 
+                      : 'bg-white border-gray-100 text-gray-400'
+                  }`}
+                >
+                  <span className={`text-[9px] font-black uppercase tracking-widest leading-none mb-1.5 ${isActive ? 'text-blue-400' : 'text-gray-400'}`}>
+                    {format(date, 'EEE', { locale: fr })}
+                  </span>
+                  <span className="text-base font-black leading-none tracking-tight">
+                    {format(date, 'dd')}
+                  </span>
+                  {dayTasksCount > 0 && (
+                    <span className={`absolute -top-1 -right-1 w-5 h-5 text-[9px] font-black rounded-full flex items-center justify-center border-2 transition-all ${
+                      isActive ? 'bg-blue-500 text-white border-gray-900' : 'bg-gray-100 text-gray-500 border-white'
+                    }`}>
+                      {dayTasksCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* CONTENU MOBILE */}
-        <div className="space-y-12 pb-16">
+        <div className="px-1 flex items-end justify-between border-b-2 border-gray-100 pb-3">
+          <h2 className="text-xl font-black uppercase tracking-tighter text-gray-900 leading-none">
+            {format(weekDates[selectedDayIdx], 'EEEE dd MMMM', { locale: fr })}
+          </h2>
+          <span className="text-[11px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase">
+            {tasks.filter(t => isSameDay(parseISO(t.startTime), weekDates[selectedDayIdx])).length} fiches
+          </span>
+        </div>
+
+        <div className="space-y-10">
           {SHIFTS.map((shift) => {
             const shiftTasks = tasks
               .filter(t => t.shift === shift.id && isSameDay(parseISO(t.startTime), weekDates[selectedDayIdx]))
               .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
             return (
-              <div key={shift.id} className="space-y-5">
-                <div className="flex items-center gap-4 px-1">
-                  <span className="text-3xl">{shift.icon}</span>
-                  <span className="font-black text-[13px] uppercase tracking-[0.25em] text-slate-400">{shift.label}</span>
-                  <div className="h-0.5 bg-slate-200 flex-1 rounded-full"></div>
+              <div key={shift.id} className="space-y-4">
+                <div className="flex items-center gap-3 text-gray-400 font-black uppercase text-[11px] tracking-widest">
+                  <span className="text-2xl">{shift.icon}</span> {shift.label}
                 </div>
-                
-                <div className="grid grid-cols-1 gap-5">
+                <div className="grid grid-cols-1 gap-4">
                   {shiftTasks.map(task => (
                     <TaskCard 
                       key={task.id} 
                       task={task} 
                       currentTime={currentTime} 
                       isMobile 
-                      onEdit={onEditTask} 
-                      onDuplicate={onDuplicateTask} 
-                      onDelete={onDeleteTask} 
+                      onEdit={onEditTask}
+                      onDuplicate={onDuplicateTask}
+                      onDelete={onDeleteTask}
                     />
                   ))}
-                  <button 
-                    onClick={() => onAddTask(selectedDayIdx, shift.id)} 
-                    className="w-full py-6 border-3 border-dashed border-slate-300 rounded-[2.5rem] text-slate-400 font-black text-[13px] uppercase bg-slate-50/50 active:bg-blue-50 active:text-blue-600 active:border-blue-300 transition-all shadow-inner"
-                  >
+                  <button onClick={() => onAddTask(selectedDayIdx, shift.id)} className="w-full py-6 border-2 border-dashed border-gray-200 rounded-[2rem] text-gray-400 font-black uppercase text-[11px] bg-white/40">
                     + Ajouter {shift.label}
                   </button>
                 </div>
@@ -169,43 +231,65 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
         </div>
       </div>
 
-      {/* VUE DESKTOP */}
-      <div className="hidden md:block overflow-hidden border-2 border-slate-200 rounded-[2.5rem] bg-white shadow-2xl">
+      {/* VUE DESKTOP AVEC DÉFILEMENT SI BESOIN */}
+      <div className="hidden md:block overflow-hidden shadow-sm border rounded-[2.5rem] bg-white">
         <table className="w-full border-collapse table-fixed">
           <thead>
-            <tr className="bg-slate-50 border-b-2 border-slate-100">
-              <th className="p-6 w-32 border-r border-slate-100 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Service</th>
+            <tr className="bg-gray-50 border-b">
+              <th className="p-4 text-center w-28 border-r">
+                <span className="text-[10px] font-black uppercase text-gray-300">Service</span>
+              </th>
               {weekDates.map((date) => (
-                <th key={date.toString()} className="p-6 text-center border-r border-slate-100 last:border-r-0">
-                  <div className="text-[10px] uppercase font-black text-blue-500 mb-1">{format(date, 'EEEE', { locale: fr })}</div>
-                  <div className="font-black text-slate-900 text-xl">{format(date, 'dd MMM')}</div>
+                <th key={date.toString()} className="p-4 text-center border-r last:border-r-0">
+                  <div className="text-[10px] uppercase font-black text-gray-400 mb-1.5">{format(date, 'EEEE', { locale: fr })}</div>
+                  <div className="font-black text-gray-900 text-base">{format(date, 'dd MMM', { locale: fr })}</div>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {SHIFTS.map((shift) => (
-              <tr key={shift.id} className="border-b border-slate-100 last:border-b-0">
-                <td className="p-6 bg-slate-50/30 border-r border-slate-100 text-center">
-                  <div className="text-4xl mb-2">{shift.icon}</div>
-                  <div className="text-[10px] uppercase font-black text-slate-400">{shift.label}</div>
+              <tr key={shift.id} className="border-b last:border-b-0">
+                <td className="p-4 bg-gray-50/50 border-r text-center">
+                  <div className="text-3xl mb-1.5">{shift.icon}</div>
+                  <div className="text-[10px] uppercase font-black text-gray-500">{shift.label}</div>
                 </td>
                 {weekDates.map((date, dayIdx) => {
                   const dayTasks = tasks.filter(t => t.shift === shift.id && isSameDay(parseISO(t.startTime), date));
+                  const isOver = dropTarget?.dayIdx === dayIdx && dropTarget?.shiftId === shift.id;
+                  
                   return (
-                    <td key={`${dayIdx}-${shift.id}`} className="border-r border-slate-100 last:border-r-0 align-top p-4 min-h-[220px]">
-                      <div className="flex flex-col gap-4">
+                    <td 
+                      key={`${dayIdx}-${shift.id}`} 
+                      onDragOver={(e) => handleDragOver(e, dayIdx, shift.id)}
+                      onDragLeave={() => setDropTarget(null)}
+                      onDrop={(e) => handleDrop(e, dayIdx, shift.id)}
+                      className={`border-r last:border-r-0 align-top transition-colors duration-200 ${isOver ? 'bg-blue-50/80' : 'bg-white'}`}
+                    >
+                      {/* ZONE DE DÉFILEMENT INTERNE */}
+                      <div className="p-3 flex flex-col gap-3 h-[320px] overflow-y-auto custom-scrollbar group/cell">
                         {dayTasks.map(task => (
                           <TaskCard 
                             key={task.id} 
                             task={task} 
                             currentTime={currentTime} 
-                            onEdit={onEditTask} 
-                            onDuplicate={onDuplicateTask} 
-                            onDelete={onDeleteTask} 
+                            isBeingDragged={draggedTaskId === task.id}
+                            onEdit={onEditTask}
+                            onDuplicate={onDuplicateTask}
+                            onDelete={onDeleteTask}
+                            onDragStart={handleDragStart}
+                            onDragEnd={handleDragEnd}
                           />
                         ))}
-                        <button onClick={() => onAddTask(dayIdx, shift.id)} className="w-full py-4 border-2 border-dashed border-slate-100 rounded-2xl text-slate-200 hover:text-blue-400 hover:border-blue-200 transition-all font-black text-3xl">+</button>
+                        {isOver && (
+                          <div className="border-2 border-dashed border-blue-400 bg-blue-100/50 rounded-2xl min-h-[64px] animate-pulse shrink-0" />
+                        )}
+                        <button 
+                          onClick={() => onAddTask(dayIdx, shift.id)} 
+                          className="mt-auto shrink-0 w-full py-2 border-2 border-dashed border-gray-100 rounded-xl text-gray-200 hover:border-blue-200 hover:text-blue-400 transition-all font-black text-2xl"
+                        >
+                          +
+                        </button>
                       </div>
                     </td>
                   );
