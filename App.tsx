@@ -23,10 +23,11 @@ const App: React.FC = () => {
   const currentWeekStart = startOfDay(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }));
   const weekLabel = `${format(currentWeekStart, 'dd MMM', { locale: fr })} - ${format(addDays(currentWeekStart, 4), 'dd MMM yyyy', { locale: fr })}`;
 
+  // --- PERSISTANCE ---
   useEffect(() => {
     const saved = localStorage.getItem('cuisine_tasks');
     if (saved) {
-      try { setTasks(JSON.parse(saved)); } catch (e) { console.error(e); }
+      try { setTasks(JSON.parse(saved)); } catch (e) { console.error("Erreur chargement:", e); }
     }
   }, []);
 
@@ -34,14 +35,42 @@ const App: React.FC = () => {
     localStorage.setItem('cuisine_tasks', JSON.stringify(tasks));
   }, [tasks]);
 
+  // --- ACTIONS DE SAUVEGARDE ET RÉGLAGES ---
+  const handleExportJSON = () => {
+    const dataStr = JSON.stringify(tasks, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const link = document.createElement('a');
+    link.setAttribute('href', dataUri);
+    link.setAttribute('download', `backup_cuisine_${format(new Date(), 'yyyy-MM-dd')}.json`);
+    link.click();
+    setShowSettings(false);
+  };
+
+  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (window.confirm("Remplacer toutes les données par ce fichier JSON ?")) {
+          setTasks(json);
+          setShowSettings(false);
+        }
+      } catch (err) { alert("Erreur : Fichier JSON invalide."); }
+    };
+    reader.readAsText(file);
+  };
+
   const handleResetAll = () => {
-    if (window.confirm("⚠️ Supprimer TOUTES les tâches ?")) {
+    if (window.confirm("⚠️ ATTENTION : Supprimer TOUTES les tâches définitivement ?")) {
       setTasks([]);
       localStorage.removeItem('cuisine_tasks');
       setShowSettings(false);
     }
   };
 
+  // --- LOGIQUE PDF ---
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
     setIsGeneratingPdf(true);
@@ -55,40 +84,56 @@ const App: React.FC = () => {
     };
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 600));
       await html2pdf().set(opt).from(printRef.current).save();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsGeneratingPdf(false);
-    }
+    } catch (err) { console.error("Erreur PDF:", err); } 
+    finally { setIsGeneratingPdf(false); }
   };
 
   const tasksForCurrentWeek = tasks.filter(t => {
     const tDate = typeof t.startTime === 'string' ? parseISO(t.startTime) : t.startTime;
-    return Array.from({ length: 7 }, (_, i) => format(addDays(currentWeekStart, i), 'yyyy-MM-dd')).includes(format(tDate, 'yyyy-MM-dd'));
+    const taskDayStr = format(tDate, 'yyyy-MM-dd');
+    return Array.from({ length: 7 }, (_, i) => 
+      format(addDays(currentWeekStart, i), 'yyyy-MM-dd')
+    ).includes(taskDayStr);
   });
 
   return (
     <div className="min-h-screen bg-gray-50 pb-32 overflow-x-hidden">
       <header className="bg-white p-4 shadow-sm sticky top-0 z-50 flex flex-col gap-3">
         <div className="flex justify-between items-center">
-          <h1 className="font-black text-blue-600 uppercase text-lg">CUISINE PLANNER</h1>
-          <button onClick={() => setShowSettings(!showSettings)} className="p-2 rounded-full bg-gray-100">⚙️</button>
+          <h1 className="font-black text-blue-600 uppercase text-lg tracking-tighter">CUISINE PLANNER</h1>
+          <div className="relative">
+            <button 
+              onClick={() => setShowSettings(!showSettings)} 
+              className={`p-2 rounded-full border transition-colors ${showSettings ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}
+            >
+              ⚙️
+            </button>
+            
+            {showSettings && (
+              <div className="absolute right-0 mt-3 w-64 bg-white border-2 rounded-2xl shadow-2xl p-2 z-[60]">
+                <div className="text-[10px] font-black uppercase text-gray-400 p-2 border-b mb-1">Paramètres</div>
+                <button onClick={handleExportJSON} className="w-full text-left p-3 text-sm font-bold hover:bg-blue-50 rounded-xl flex items-center gap-2">
+                  📤 Sauvegarder JSON
+                </button>
+                <button onClick={() => fileInputRef.current?.click()} className="w-full text-left p-3 text-sm font-bold hover:bg-blue-50 rounded-xl flex items-center gap-2">
+                  📥 Importer JSON
+                </button>
+                <div className="border-t my-1"></div>
+                <button onClick={handleResetAll} className="w-full text-left p-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl flex items-center gap-2">
+                  🗑️ Réinitialiser tout
+                </button>
+                <input type="file" ref={fileInputRef} className="hidden" onChange={handleImportJSON} accept=".json" />
+              </div>
+            )}
+          </div>
         </div>
         
-        {showSettings && (
-          <div className="absolute right-4 top-16 w-64 bg-white border-2 rounded-2xl shadow-2xl p-2 z-[60]">
-            <button onClick={() => fileInputRef.current?.click()} className="w-full text-left p-3 text-sm font-bold hover:bg-gray-50 rounded-xl">📥 Importer JSON</button>
-            <button onClick={handleResetAll} className="w-full text-left p-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl">🗑️ Réinitialiser tout</button>
-            <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => {/* logique import */}} accept=".json" />
-          </div>
-        )}
-
         <div className="flex bg-gray-100 p-1 rounded-2xl border">
-          <button onClick={() => setWeekOffset(v => v - 1)} className="flex-1 font-black py-2">‹</button>
-          <span className="flex-[3] text-center self-center text-[10px] font-black uppercase">{weekLabel}</span>
-          <button onClick={() => setWeekOffset(v => v + 1)} className="flex-1 font-black py-2">›</button>
+          <button onClick={() => setWeekOffset(v => v - 1)} className="flex-1 font-black py-2 active:bg-white rounded-xl transition-all">‹</button>
+          <span className="flex-[3] text-center self-center text-[10px] font-black uppercase tracking-widest">{weekLabel}</span>
+          <button onClick={() => setWeekOffset(v => v + 1)} className="flex-1 font-black py-2 active:bg-white rounded-xl transition-all">›</button>
         </div>
       </header>
 
@@ -109,19 +154,18 @@ const App: React.FC = () => {
         />
       </main>
 
-      {/* BOUTON EXPORTER : Fixé en bas, toujours visible */}
       <div className="fixed bottom-6 left-0 right-0 px-4 z-40 flex justify-center">
         <button 
           onClick={handleDownloadPDF} 
           disabled={isGeneratingPdf} 
-          className="w-full max-w-xs bg-black text-white py-4 rounded-2xl font-black uppercase shadow-2xl active:scale-95 disabled:opacity-50"
+          className="w-full max-w-xs bg-black text-white py-4 rounded-2xl font-black uppercase shadow-2xl active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
         >
-          {isGeneratingPdf ? "⏳ Génération..." : "📄 Exporter PDF"}
+          {isGeneratingPdf ? "⏳ Génération..." : "📄 Exporter PDF Semaine"}
         </button>
       </div>
 
-      {/* ZONE D'IMPRESSION : SORTIE DU FLUX VISUEL (ne casse plus le mobile) */}
-      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px' }}>
+      {/* ZONE D'IMPRESSION ISOLÉE (Ne casse pas le mobile) */}
+      <div style={{ position: 'absolute', top: '-9999px', left: '-9999px', pointerEvents: 'none' }}>
         <div ref={printRef}>
           <PrintLayout tasks={tasksForCurrentWeek} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
         </div>
