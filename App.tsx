@@ -26,7 +26,13 @@ const App: React.FC = () => {
   // --- PERSISTANCE & PARAMÈTRES ---
   useEffect(() => {
     const saved = localStorage.getItem('cuisine_tasks');
-    if (saved) setTasks(JSON.parse(saved));
+    if (saved) {
+      try {
+        setTasks(JSON.parse(saved));
+      } catch (e) {
+        console.error("Erreur de chargement des données", e);
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -50,11 +56,11 @@ const App: React.FC = () => {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        if (window.confirm("Remplacer toutes les données ?")) {
+        if (window.confirm("Remplacer toutes les données existantes par ce fichier ?")) {
           setTasks(json);
           setShowSettings(false);
         }
-      } catch (err) { alert("Fichier invalide"); }
+      } catch (err) { alert("Fichier JSON invalide."); }
     };
     reader.readAsText(file);
   };
@@ -62,7 +68,15 @@ const App: React.FC = () => {
   // --- ACTIONS TACHES ---
   const handleAddTask = (day: number, shift: ShiftType) => {
     const date = setMinutes(setHours(addDays(currentWeekStart, day), 8), 0);
-    setEditingTask({ startTime: format(date, "yyyy-MM-dd'T'HH:mm"), shift, responsible: STAFF_LIST[0] } as PrepTask);
+    setEditingTask({ 
+      startTime: format(date, "yyyy-MM-dd'T'HH:mm"), 
+      shift, 
+      responsible: STAFF_LIST[0],
+      name: '',
+      prepTime: 15,
+      cookTime: 60,
+      shelfLifeDays: 3
+    } as PrepTask);
     setIsModalOpen(true);
   };
 
@@ -71,14 +85,21 @@ const App: React.FC = () => {
     setIsGeneratingPdf(true);
     const opt = {
       margin: 0,
-      filename: `Planning_${weekLabel}.pdf`,
+      filename: `Planning_${weekLabel.replace(/ /g, '_')}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true, width: 1100, windowWidth: 1100 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
     };
-    try { await html2pdf().set(opt).from(printRef.current).save(); } 
-    finally { setIsGeneratingPdf(false); }
+    try { 
+      await html2pdf().set(opt).from(printRef.current).save(); 
+    } catch (err) {
+      console.error("Erreur PDF:", err);
+    } finally { 
+      setIsGeneratingPdf(false); 
+    }
   };
 
+  // Filtrage des tâches pour l'export PDF (uniquement la semaine affichée)
   const tasksForCurrentWeek = tasks.filter(t => {
     const d = parseISO(t.startTime.toString());
     return d >= currentWeekStart && d < addDays(currentWeekStart, 7);
@@ -90,21 +111,35 @@ const App: React.FC = () => {
         <div className="flex justify-between items-center">
           <h1 className="font-black text-blue-600 uppercase text-lg tracking-tighter">Cuisine Dash</h1>
           <div className="flex gap-2 relative">
-            <button onClick={() => setShowSettings(!showSettings)} className="p-2 bg-gray-100 rounded-full border">⚙️</button>
+            <button 
+              onClick={() => setShowSettings(!showSettings)} 
+              className={`p-2 rounded-full border transition-colors ${showSettings ? 'bg-blue-600 text-white border-blue-600' : 'bg-gray-100 border-gray-200'}`}
+            >
+              ⚙️
+            </button>
             {showSettings && (
-              <div className="absolute right-0 mt-10 w-48 bg-white border rounded-2xl shadow-2xl p-2 z-[60]">
-                <button onClick={handleExportJSON} className="w-full text-left p-3 text-sm font-bold hover:bg-gray-50 rounded-xl">📤 Sauvegarder</button>
-                <button onClick={() => fileInputRef.current?.click()} className="w-full text-left p-3 text-sm font-bold hover:bg-gray-50 rounded-xl">📥 Importer</button>
-                <button onClick={() => {if(window.confirm("Tout vider ?")) setTasks([]); setShowSettings(false);}} className="w-full text-left p-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl">🗑️ Reset</button>
+              <div className="absolute right-0 mt-10 w-56 bg-white border-2 border-gray-100 rounded-2xl shadow-2xl p-2 z-[60] animate-in zoom-in-95 duration-100">
+                <div className="text-[10px] font-black uppercase text-gray-400 p-2 border-b mb-1">Données Generative AI</div>
+                <button onClick={handleExportJSON} className="w-full text-left p-3 text-sm font-bold hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors flex items-center gap-2">
+                  📤 Sauvegarder (JSON)
+                </button>
+                <button onClick={() => fileInputRef.current?.click()} className="w-full text-left p-3 text-sm font-bold hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-colors flex items-center gap-2">
+                  📥 Importer
+                </button>
+                <button onClick={() => {if(window.confirm("Attention : Cela supprimera TOUTES vos fiches. Continuer ?")) {setTasks([]); setShowSettings(false);}}} className="w-full text-left p-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-2">
+                  🗑️ Réinitialiser tout
+                </button>
                 <input type="file" ref={fileInputRef} className="hidden" onChange={handleImportJSON} accept=".json" />
               </div>
             )}
           </div>
         </div>
+        
+        {/* Navigation Semaine */}
         <div className="flex bg-gray-100 p-1 rounded-2xl border">
-          <button onClick={() => setWeekOffset(v => v - 1)} className="flex-1 font-black py-2">‹</button>
-          <span className="flex-[3] text-center self-center text-[10px] font-black uppercase">{weekLabel}</span>
-          <button onClick={() => setWeekOffset(v => v + 1)} className="flex-1 font-black py-2">›</button>
+          <button onClick={() => setWeekOffset(v => v - 1)} className="flex-1 font-black py-2 active:bg-white rounded-xl transition-all">‹</button>
+          <span className="flex-[3] text-center self-center text-[10px] font-black uppercase tracking-widest">{weekLabel}</span>
+          <button onClick={() => setWeekOffset(v => v + 1)} className="flex-1 font-black py-2 active:bg-white rounded-xl transition-all">›</button>
         </div>
       </header>
 
@@ -114,8 +149,11 @@ const App: React.FC = () => {
           currentTime={new Date()}
           onAddTask={handleAddTask}
           onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
-          onDeleteTask={(id) => { if(window.confirm("Supprimer ?")) setTasks(prev => prev.filter(t => t.id !== id)); }}
-          onDuplicateTask={(t) => setTasks(prev => [...prev, {...t, id: crypto.randomUUID(), name: t.name + " (Copie)"}])}
+          onDeleteTask={(id) => { if(window.confirm("Supprimer cette fiche définitivement ?")) setTasks(prev => prev.filter(t => t.id !== id)); }}
+          onDuplicateTask={(t) => {
+            const newTask = { ...t, id: crypto.randomUUID(), name: t.name + " (Copie)" };
+            setTasks(prev => [...prev, newTask]);
+          }}
           onMoveTask={(id, date, shift) => {
             setTasks(prev => prev.map(t => t.id === id ? {...t, startTime: format(date, "yyyy-MM-dd'T'HH:mm"), shift} : t));
           }}
@@ -123,20 +161,47 @@ const App: React.FC = () => {
         />
       </main>
 
+      {/* Bouton PDF Flottant */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-xs px-4 z-40">
-        <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="w-full bg-black text-white py-5 rounded-2xl font-black uppercase shadow-2xl transition-all active:scale-95">
-          {isGeneratingPdf ? '⏳ Génération...' : '📄 Exporter PDF'}
+        <button 
+          onClick={handleDownloadPDF} 
+          disabled={isGeneratingPdf} 
+          className="w-full bg-black text-white py-5 rounded-3xl font-black uppercase shadow-2xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
+        >
+          {isGeneratingPdf ? (
+            <>⏳ Génération en cours...</>
+          ) : (
+            <>📄 Exporter PDF Semaine</>
+          )}
         </button>
       </div>
 
-      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}><div ref={printRef}>
-        <PrintLayout tasks={tasksForCurrentWeek} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
-      </div></div>
+      {/* Zone masquée pour le rendu PDF */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <div ref={printRef}>
+          <PrintLayout tasks={tasksForCurrentWeek} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
+        </div>
+      </div>
 
-      <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={(task) => {
-        setTasks(prev => editingTask?.id ? prev.map(t => t.id === task.id ? task : t) : [...prev, task]);
-        setIsModalOpen(false);
-      }} initialTask={editingTask} />
+      <TaskModal 
+        isOpen={isModalOpen} 
+        onClose={() => {
+          setIsModalOpen(false);
+          setEditingTask(undefined);
+        }} 
+        onSave={(task) => {
+          setTasks(prev => {
+            const exists = prev.find(t => t.id === task.id);
+            if (exists) {
+              return prev.map(t => t.id === task.id ? task : t);
+            }
+            return [...prev, task];
+          });
+          setIsModalOpen(false);
+          setEditingTask(undefined);
+        }} 
+        initialTask={editingTask} 
+      />
     </div>
   );
 };
