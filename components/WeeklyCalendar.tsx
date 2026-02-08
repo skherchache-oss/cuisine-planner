@@ -50,38 +50,37 @@ const TaskCard: React.FC<TaskCardProps> = ({
       onDragEnd={!isMobile && onDragEnd ? (e) => onDragEnd(e, task.id) : undefined}
       className={`relative group/task select-none transition-all ${isBeingDragged ? 'scale-95 opacity-50' : 'opacity-100'}`}
     >
-      {/* Boutons d'action agrandis pour le tactile */}
       <div className="absolute -top-2 -right-1 flex gap-2 z-20">
         <button 
           type="button"
           onClick={(e) => { e.stopPropagation(); onDuplicate(task); }}
-          className="w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white text-xs active:scale-150"
+          className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white text-xs active:scale-150"
         >📋</button>
         <button 
           type="button"
           onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-          className="w-7 h-7 bg-rose-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white text-sm active:scale-150"
+          className="w-8 h-8 bg-rose-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white text-sm active:scale-150"
         >✕</button>
       </div>
 
       <div 
         onClick={() => onEdit(task)}
-        className={`p-4 rounded-2xl border-2 transition-all shadow-md ${
+        className={`p-5 rounded-2xl border-2 transition-all shadow-md ${
           isOngoing ? 'border-orange-500 bg-orange-50 ring-4 ring-orange-100' : 'border-slate-100 bg-white'
         }`}
       >
         <div className="flex justify-between items-start mb-2 gap-2">
-          <span className="font-black uppercase text-[13px] text-slate-900 leading-tight">
+          <span className="font-black uppercase text-[14px] text-slate-900 leading-tight">
             {task.name}
           </span>
-          <span className="text-[11px] font-black bg-slate-900 text-white px-2 py-0.5 rounded-md whitespace-nowrap">
+          <span className="text-[11px] font-black bg-slate-900 text-white px-2 py-1 rounded-md whitespace-nowrap">
             {format(start, 'HH:mm')}
           </span>
         </div>
         
-        <div className="flex justify-between items-center mt-3 border-t border-slate-50 pt-2">
-          <span className="text-[10px] font-bold text-slate-500">👤 {task.responsible}</span>
-          <span className={`text-[10px] font-black flex items-center gap-1 ${isOngoing ? 'text-orange-600 animate-pulse' : 'text-blue-600'}`}>
+        <div className="flex justify-between items-center mt-3 border-t border-slate-50 pt-3">
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">👤 {task.responsible}</span>
+          <span className={`text-[11px] font-black flex items-center gap-1 ${isOngoing ? 'text-orange-600 animate-pulse' : 'text-blue-600'}`}>
             {isOngoing ? '🔥 EN COURS' : `⏱️ ${task.cookTime}m`}
           </span>
         </div>
@@ -108,50 +107,44 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
 
   return (
     <div className="w-full px-2">
-      {/* VUE MOBILE : NAVIGATION AGRANDIE */}
-      <div className="md:hidden space-y-6">
+      {/* VUE MOBILE : NAVIGATION SANS POINTS BLEUS */}
+      <div className="md:hidden space-y-8">
         <div className="bg-white border-2 border-slate-200 rounded-[2rem] p-1.5 flex justify-between gap-1 shadow-lg">
           {weekDates.map((date, idx) => {
             const isActive = selectedDayIdx === idx;
-            const dayTasksCount = tasks.filter(t => isSameDay(parseISO(t.startTime), date)).length;
-            
             return (
               <button
                 key={idx}
                 onClick={() => setSelectedDayIdx(idx)}
-                className={`flex-1 flex flex-col items-center py-4 rounded-2xl transition-all relative ${
+                className={`flex-1 flex flex-col items-center py-4 rounded-2xl transition-all ${
                   isActive ? 'bg-slate-900 text-white shadow-xl scale-[1.05] z-10' : 'text-slate-400'
                 }`}
               >
-                <span className={`text-[9px] font-black uppercase mb-1 ${isActive ? 'text-blue-400' : ''}`}>
+                <span className={`text-[10px] font-black uppercase mb-1 ${isActive ? 'text-blue-400' : ''}`}>
                   {format(date, 'EEE', { locale: fr })}
                 </span>
-                <span className="text-lg font-black tracking-tighter leading-none">{format(date, 'dd')}</span>
-                
-                {dayTasksCount > 0 && !isActive && (
-                  <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-blue-500 rounded-full border-2 border-white shadow-sm"></span>
-                )}
+                <span className="text-xl font-black tracking-tighter leading-none">{format(date, 'dd')}</span>
               </button>
             );
           })}
         </div>
 
-        {/* CONTENU MOBILE AGRANDI */}
-        <div className="space-y-10 pb-10">
+        {/* CONTENU MOBILE */}
+        <div className="space-y-12 pb-16">
           {SHIFTS.map((shift) => {
             const shiftTasks = tasks
               .filter(t => t.shift === shift.id && isSameDay(parseISO(t.startTime), weekDates[selectedDayIdx]))
               .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
             return (
-              <div key={shift.id} className="space-y-4">
-                <div className="flex items-center gap-3 px-1">
-                  <span className="text-2xl">{shift.icon}</span>
-                  <span className="font-black text-[12px] uppercase tracking-[0.25em] text-slate-400">{shift.label}</span>
+              <div key={shift.id} className="space-y-5">
+                <div className="flex items-center gap-4 px-1">
+                  <span className="text-3xl">{shift.icon}</span>
+                  <span className="font-black text-[13px] uppercase tracking-[0.25em] text-slate-400">{shift.label}</span>
                   <div className="h-0.5 bg-slate-200 flex-1 rounded-full"></div>
                 </div>
                 
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-5">
                   {shiftTasks.map(task => (
                     <TaskCard 
                       key={task.id} 
@@ -165,7 +158,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                   ))}
                   <button 
                     onClick={() => onAddTask(selectedDayIdx, shift.id)} 
-                    className="w-full py-5 border-3 border-dashed border-slate-300 rounded-[2rem] text-slate-400 font-black text-[12px] uppercase bg-slate-50/50 active:bg-blue-50 active:text-blue-500 active:border-blue-200 transition-all shadow-inner"
+                    className="w-full py-6 border-3 border-dashed border-slate-300 rounded-[2.5rem] text-slate-400 font-black text-[13px] uppercase bg-slate-50/50 active:bg-blue-50 active:text-blue-600 active:border-blue-300 transition-all shadow-inner"
                   >
                     + Ajouter {shift.label}
                   </button>
@@ -176,7 +169,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
         </div>
       </div>
 
-      {/* VUE DESKTOP (Reste inchangée mais optimisée) */}
+      {/* VUE DESKTOP */}
       <div className="hidden md:block overflow-hidden border-2 border-slate-200 rounded-[2.5rem] bg-white shadow-2xl">
         <table className="w-full border-collapse table-fixed">
           <thead>
@@ -200,7 +193,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                 {weekDates.map((date, dayIdx) => {
                   const dayTasks = tasks.filter(t => t.shift === shift.id && isSameDay(parseISO(t.startTime), date));
                   return (
-                    <td key={`${dayIdx}-${shift.id}`} className="border-r border-slate-100 last:border-r-0 align-top p-4 min-h-[200px]">
+                    <td key={`${dayIdx}-${shift.id}`} className="border-r border-slate-100 last:border-r-0 align-top p-4 min-h-[220px]">
                       <div className="flex flex-col gap-4">
                         {dayTasks.map(task => (
                           <TaskCard 
@@ -210,8 +203,6 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                             onEdit={onEditTask} 
                             onDuplicate={onDuplicateTask} 
                             onDelete={onDeleteTask} 
-                            onDragStart={(e, id) => { e.dataTransfer.setData('text/plain', id); setDraggedTaskId(id); }}
-                            onDragEnd={() => setDraggedTaskId(null)} 
                           />
                         ))}
                         <button onClick={() => onAddTask(dayIdx, shift.id)} className="w-full py-4 border-2 border-dashed border-slate-100 rounded-2xl text-slate-200 hover:text-blue-400 hover:border-blue-200 transition-all font-black text-3xl">+</button>
