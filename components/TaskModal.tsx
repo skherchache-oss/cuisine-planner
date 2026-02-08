@@ -80,10 +80,9 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, initialT
 
     const finalResponsible = formData.responsible === 'Autre' ? customResponsible : formData.responsible;
     
-    // Calcul précis du jour de la semaine (0=Lundi, 4=Vendredi)
     const taskDate = parseISO(formData.startTime || getDefaultTime());
     let calculatedDayIdx = getDay(taskDate) - 1; 
-    if (calculatedDayIdx < 0) calculatedDayIdx = 6; // Gère le dimanche
+    if (calculatedDayIdx < 0) calculatedDayIdx = 6; 
 
     onSave({
       id: formData.id || crypto.randomUUID(),
@@ -99,35 +98,38 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, initialT
       color: 'blue',
       comments: formData.comments || ''
     } as PrepTask);
-    onClose();
   };
 
   const currentCookMins = cookTimeUnit === 'h' ? Math.round(displayCookTime * 60) : displayCookTime;
   const expiry = formData.startTime ? calculateExpiry(formData.startTime, currentCookMins, Number(formData.shelfLifeDays || 0)) : null;
 
   const labelClasses = "block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5";
-  const inputClasses = "w-full border-2 border-gray-100 rounded-xl p-3 outline-none font-bold bg-white text-gray-900 transition-all focus:border-blue-600 focus:ring-1 focus:ring-blue-600 shadow-sm";
+  const inputClasses = "w-full border-2 border-gray-100 rounded-xl p-4 outline-none font-bold bg-white text-gray-900 transition-all focus:border-blue-600 focus:ring-1 focus:ring-blue-600 shadow-sm text-base";
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-200">
-        <div className="p-8 bg-gray-50 border-b flex justify-between items-center">
+    <div className="fixed inset-0 bg-black/70 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[95vh]">
+        
+        {/* HEADER FIXE */}
+        <div className="p-6 sm:p-8 bg-gray-50 border-b flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter leading-none">
+            <h2 className="text-xl sm:text-2xl font-black text-gray-900 uppercase tracking-tighter leading-none">
               {formData.id ? 'Modifier la Fiche' : 'Nouvelle Production'}
             </h2>
-            <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mt-2">Saisie des paramètres HACCP & Temps</p>
+            <p className="hidden sm:block text-[10px] font-bold text-blue-500 uppercase tracking-widest mt-2">Paramètres HACCP & Temps</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-red-500 text-4xl font-light">&times;</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-red-500 text-4xl font-light p-2">&times;</button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-8 overflow-y-auto space-y-6">
-          {/* LIGNE 1 : NOM ET RESPONSABLE */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <form onSubmit={handleSubmit} className="p-6 sm:p-8 overflow-y-auto space-y-6">
+          
+          {/* DESIGNATION */}
+          <div className="space-y-4">
             <div>
               <label className={labelClasses}>Désignation du Plat / Préparation</label>
-              <input required autoFocus={!formData.id} type="text" className={inputClasses} placeholder="ex: Sauce Tomate, Fond de veau..." value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+              <input required autoFocus={!formData.id} type="text" className={`${inputClasses} text-lg`} placeholder="ex: Sauce Tomate..." value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
             </div>
+            
             <div>
               <label className={labelClasses}>Chef Responsable</label>
               <select className={inputClasses} value={formData.responsible} onChange={e => setFormData({...formData, responsible: e.target.value})}>
@@ -139,10 +141,12 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, initialT
             </div>
           </div>
 
-          {/* LIGNE 2 : TEMPS DE PRODUCTION */}
-          <div className="bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100">
-            <label className={`${labelClasses} text-blue-400 mb-4`}>Chronométrie de Production (Minutes)</label>
-            <div className="grid grid-cols-3 gap-4">
+          {/* SECTION TEMPS - CORRIGÉ POUR MOBILE */}
+          <div className="bg-blue-50/50 p-5 sm:p-6 rounded-[2rem] border border-blue-100 space-y-4">
+            <label className={`${labelClasses} text-blue-400`}>Chronométrie de Production</label>
+            
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {/* PREPA */}
               <div>
                 <label className="text-[9px] font-black uppercase text-gray-500 mb-1 block">Préparation</label>
                 <div className="relative">
@@ -150,16 +154,25 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, initialT
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300 uppercase">min</span>
                 </div>
               </div>
-              <div>
-                <label className="text-[9px] font-black uppercase text-gray-500 mb-1 block">Cuisson</label>
+
+              {/* CUISSON - MISE EN AVANT */}
+              <div className="sm:scale-105">
+                <label className="text-[9px] font-black uppercase text-blue-600 mb-1 block">Cuisson (Important)</label>
                 <div className="flex gap-1">
-                  <input type="number" className={`${inputClasses} flex-1`} value={displayCookTime} onChange={e => setDisplayCookTime(parseFloat(e.target.value) || 0)} />
-                  <select className="bg-gray-100 rounded-xl px-2 text-[10px] font-black uppercase outline-none" value={cookTimeUnit} onChange={e => setCookTimeUnit(e.target.value as 'min' | 'h')}>
+                  <input 
+                    type="number" 
+                    className={`${inputClasses} flex-1 !border-blue-200 text-xl font-black text-blue-700`} 
+                    value={displayCookTime} 
+                    onChange={e => setDisplayCookTime(parseFloat(e.target.value) || 0)} 
+                  />
+                  <select className="bg-blue-100 rounded-xl px-2 text-[10px] font-black uppercase outline-none text-blue-700 border-2 border-blue-200" value={cookTimeUnit} onChange={e => setCookTimeUnit(e.target.value as 'min' | 'h')}>
                     <option value="min">min</option>
                     <option value="h">h</option>
                   </select>
                 </div>
               </div>
+
+              {/* CONDITIONNEMENT */}
               <div>
                 <label className="text-[9px] font-black uppercase text-gray-500 mb-1 block">Conditionnement</label>
                 <div className="relative">
@@ -170,47 +183,52 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, initialT
             </div>
           </div>
 
-          {/* LIGNE 3 : PLANIFICATION ET DLC */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
-              <label className={labelClasses}>Date & Heure de début de production</label>
+          {/* PLANIFICATION ET DLC */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="sm:col-span-2">
+              <label className={labelClasses}>Date & Heure de début</label>
               <input type="datetime-local" className={inputClasses} value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} />
             </div>
             <div>
-              <label className={labelClasses}>DLC après cuisson</label>
+              <label className={labelClasses}>DLC (jours)</label>
               <div className="relative">
                 <input type="number" className={inputClasses} value={formData.shelfLifeDays} onChange={e => setFormData({...formData, shelfLifeDays: parseInt(e.target.value) || 0})} />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300 uppercase">jours</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-300 uppercase">j</span>
               </div>
             </div>
           </div>
 
-          {/* COMMENTAIRES / RECETTE */}
+          {/* COMMENTAIRES */}
           <div>
-            <label className={labelClasses}>Commentaires / Instructions de Recette</label>
+            <label className={labelClasses}>Instructions / Recette</label>
             <textarea 
-              rows={4} 
+              rows={3} 
               className={`${inputClasses} resize-none font-medium text-sm`} 
-              placeholder="Détails de la mise en place, points de vigilance, étapes clés..."
+              placeholder="Détails clés..."
               value={formData.comments}
               onChange={e => setFormData({...formData, comments: e.target.value})}
             />
           </div>
 
-          {/* RECAPITULATIF DLC */}
+          {/* RECAP DLC */}
           {expiry && (
-            <div className="bg-gray-900 rounded-3xl p-6 text-white shadow-xl flex items-center justify-between">
+            <div className="bg-gray-900 rounded-3xl p-5 text-white shadow-xl flex items-center justify-between border-b-4 border-blue-600">
               <div>
-                <div className="text-[10px] font-black uppercase opacity-50 mb-1 tracking-widest">Expiration Théorique (DLC)</div>
-                <div className="text-xl font-black">{format(expiry, 'EEEE dd MMMM yyyy à HH:mm', { locale: fr })}</div>
+                <div className="text-[9px] font-black uppercase opacity-50 mb-1 tracking-widest">Expiration (DLC)</div>
+                <div className="text-base sm:text-lg font-black">{format(expiry, 'EEEE dd MMM à HH:mm', { locale: fr })}</div>
               </div>
-              <div className="text-3xl">🛡️</div>
+              <div className="text-2xl">🛡️</div>
             </div>
           )}
 
-          <div className="pt-4 flex gap-4">
-            <button type="button" onClick={onClose} className="flex-1 px-6 py-4 border-2 border-gray-100 rounded-2xl text-gray-400 font-black uppercase tracking-widest hover:bg-gray-50 transition-colors">Annuler</button>
-            <button type="submit" className="flex-1 px-6 py-4 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 font-black uppercase tracking-widest transition-all shadow-lg active:scale-95">Enregistrer la fiche</button>
+          {/* BOUTONS ACTIONS FIXES POUR MOBILE */}
+          <div className="pt-4 flex flex-col sm:flex-row gap-3">
+            <button type="submit" className="w-full order-1 sm:order-2 px-6 py-5 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 text-sm">
+              Enregistrer la fiche
+            </button>
+            <button type="button" onClick={onClose} className="w-full order-2 sm:order-1 px-6 py-4 border-2 border-gray-100 rounded-2xl text-gray-400 font-black uppercase tracking-widest hover:bg-gray-50 transition-colors text-xs">
+              Annuler
+            </button>
           </div>
         </form>
       </div>
