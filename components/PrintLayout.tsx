@@ -23,43 +23,40 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
   });
 
   return (
-    <div className="bg-white text-black" style={{ width: '280mm', margin: '0 auto', fontFamily: 'sans-serif' }}>
+    <div className="bg-white text-black" style={{ width: '297mm', margin: '0 auto', padding: '10mm' }}>
       
-      {/* SECTION 1 : PLANNING HEBDOMADAIRE */}
-      <div className="html2pdf__page-break" style={{ padding: '5mm' }}>
-        <div className="flex justify-between items-center mb-4 border-b border-black pb-2">
-          <div className="flex items-center gap-3">
-            <div className="bg-black text-white px-3 py-1 text-xl font-black rounded uppercase">
+      {/* SECTION 1 : PLANNING HEBDOMADAIRE (PAGE 1) */}
+      <div className="html2pdf__page-break" style={{ marginBottom: '20mm' }}>
+        <div className="flex justify-between items-center mb-6 border-b-4 border-black pb-4">
+          <div className="flex items-center gap-4">
+            <div className="bg-black text-white px-4 py-2 text-2xl font-black rounded uppercase">
               BISTROT M
             </div>
             <div>
-              <h1 className="text-sm font-black uppercase leading-none">Registre de Production</h1>
-              <p className="text-[8px] font-bold text-gray-400 uppercase">HACCP & Traçabilité</p>
+              <h1 className="text-xl font-black uppercase leading-none">Registre de Production</h1>
+              <p className="text-xs font-bold text-gray-500 uppercase">Traçabilité HACCP - Semaine {weekLabel}</p>
             </div>
-          </div>
-          <div className="border border-black px-4 py-1 font-black text-sm uppercase bg-gray-50">
-            SEMAINE DU : {weekLabel}
           </div>
         </div>
 
-        <table className="w-full border-collapse border border-black table-fixed">
+        <table className="w-full border-collapse border-2 border-black table-fixed">
           <thead>
-            <tr className="bg-gray-100 text-[9px] uppercase font-black">
-              <th className="border border-black p-1 w-[50px]">Shift</th>
+            <tr className="bg-gray-100">
+              <th className="border-2 border-black p-2 w-[70px] text-[12px] font-black uppercase">Service</th>
               {weekDates.map(date => (
-                <th key={date.toString()} className="border border-black p-1 text-center">
-                  <div>{format(date, 'EEEE', { locale: fr })}</div>
-                  <div className="text-[7px] text-gray-400">{format(date, 'dd/MM', { locale: fr })}</div>
+                <th key={date.toString()} className="border-2 border-black p-2 text-center">
+                  <div className="text-[14px] font-black uppercase">{format(date, 'EEEE', { locale: fr })}</div>
+                  <div className="text-[12px] font-bold text-gray-600">{format(date, 'dd MMMM', { locale: fr })}</div>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
             {SHIFTS.map(shift => (
-              <tr key={shift.id} className="avoid-break">
-                <td className="border border-black p-1 bg-gray-50 text-center">
-                  <div className="text-xl">{shift.icon}</div>
-                  <div className="text-[7px] font-black uppercase">{shift.label}</div>
+              <tr key={shift.id}>
+                <td className="border-2 border-black p-2 bg-gray-50 text-center">
+                  <div className="text-3xl mb-1">{shift.icon}</div>
+                  <div className="text-[10px] font-black uppercase leading-tight">{shift.label}</div>
                 </td>
                 {weekDates.map((date, dayIdx) => {
                   const dayTasks = tasks.filter(t => 
@@ -68,32 +65,23 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
                   );
                   
                   return (
-                    <td key={dayIdx} className="border border-black p-1 align-top bg-white" style={{ height: 'auto' }}>
-                      <div className="flex flex-col gap-1.5">
+                    <td key={dayIdx} className="border-2 border-black p-2 align-top bg-white min-h-[120px]">
+                      <div className="flex flex-col gap-2">
                         {dayTasks.map(task => {
                           const expiry = calculateExpiry(task.startTime, task.cookTime, task.shelfLifeDays);
                           return (
-                            <div key={task.id} className="border border-black p-1 rounded-sm bg-white" style={{ pageBreakInside: 'avoid', display: 'block' }}>
-                              <div className="flex justify-between items-start border-b border-black/10 pb-1 mb-1">
-                                <span className="font-black uppercase text-[7px] leading-tight break-words flex-1 pr-1">
+                            <div key={task.id} className="border border-black p-2 rounded bg-white shadow-sm">
+                              <div className="flex justify-between items-start border-b border-black/20 pb-1 mb-1">
+                                <span className="font-black uppercase text-[10px] leading-tight flex-1">
                                   {task.name}
                                 </span>
-                                <span className="font-black text-[6px] bg-black text-white px-1 rounded-xs">
+                                <span className="font-black text-[9px] ml-2 whitespace-nowrap">
                                   {format(parseISO(task.startTime), 'HH:mm')}
                                 </span>
                               </div>
-                              <div className="text-[6px] font-bold leading-none space-y-1">
-                                <div className="flex justify-between">
-                                  <span className="truncate">👤 {task.responsible}</span>
-                                  <span>🔥 {formatDuration(task.cookTime)}</span>
-                                </div>
-                                <div className="bg-gray-50 border border-black/5 p-0.5 text-center font-black rounded-xs">
-                                  DLC: {format(expiry, 'dd/MM HH:mm')}
-                                </div>
-                              </div>
-                              <div className="mt-1 flex gap-1 border-t border-dotted border-black/20 pt-1">
-                                <div className="flex-1 border-b border-black h-2"></div>
-                                <div className="w-4 border-b border-black h-2"></div>
+                              <div className="flex justify-between text-[8px] font-bold">
+                                <span>👤 {task.responsible}</span>
+                                <span className="text-blue-800">DLC: {format(expiry, 'dd/MM HH:mm')}</span>
                               </div>
                             </div>
                           );
@@ -108,66 +96,59 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
         </table>
       </div>
 
-      {/* SAUT DE PAGE POUR LES FICHES */}
-      <div className="html2pdf__page-break" style={{ height: '1px' }}></div>
+      {/* SAUT DE PAGE FORCÉ */}
+      <div className="html2pdf__page-break"></div>
 
-      {/* SECTION 2 : FICHES D'INSTRUCTIONS */}
-      <div style={{ padding: '5mm' }}>
-        <h2 className="text-lg font-black uppercase border-b border-black pb-2 mb-4 flex items-center gap-2">
-          <span>📋 Fiches Techniques & Instructions</span>
+      {/* SECTION 2 : FICHES D'INSTRUCTIONS (NOUVELLE PAGE) */}
+      <div style={{ paddingTop: '10mm' }}>
+        <h2 className="text-2xl font-black uppercase border-b-4 border-black pb-2 mb-6 flex items-center gap-3">
+          <span>📋 Fiches Techniques & Instructions de Production</span>
         </h2>
         
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-6">
           {sortedTasks.map((task) => {
             const startTime = parseISO(task.startTime);
             const expiry = calculateExpiry(task.startTime, task.cookTime, task.shelfLifeDays);
 
             return (
               <div key={task.id} 
-                   className="border border-black rounded bg-white" 
-                   style={{ pageBreakInside: 'avoid', marginBottom: '10px', display: 'block' }}>
+                   className="border-2 border-black rounded-lg overflow-hidden bg-white" 
+                   style={{ pageBreakInside: 'avoid', display: 'block' }}>
                 
-                <div className="bg-gray-900 text-white p-2 border-b border-black flex justify-between items-center">
-                  <div className="font-black text-[10px] uppercase truncate">{task.name}</div>
-                  <div className="text-[7px] font-black bg-white/20 px-2 py-0.5 rounded uppercase">
-                    {format(startTime, 'EEEE dd MMM', { locale: fr })}
+                <div className="bg-black text-white p-3 flex justify-between items-center">
+                  <div className="font-black text-lg uppercase">{task.name}</div>
+                  <div className="text-sm font-black bg-white/20 px-3 py-1 rounded">
+                    {format(startTime, 'EEEE dd MMMM', { locale: fr })} à {format(startTime, 'HH:mm')}
                   </div>
                 </div>
 
-                <div className="p-2 flex flex-row gap-3">
-                  {/* Gauche : Data */}
-                  <div className="w-1/3 space-y-2 border-r border-gray-100 pr-2 shrink-0">
-                    <div className="flex flex-col text-[8px] font-bold border-b border-gray-50 pb-1">
-                      <span className="text-gray-400 text-[6px]">CHEF</span>
-                      <span className="text-blue-700 font-black truncate">{task.responsible}</span>
+                <div className="p-4 flex gap-6">
+                  {/* DATA BOX */}
+                  <div className="w-1/4 space-y-3">
+                    <div className="bg-gray-100 p-2 rounded">
+                      <div className="text-[10px] font-black text-gray-500 uppercase">Responsable</div>
+                      <div className="text-sm font-black text-blue-800">{task.responsible}</div>
                     </div>
-                    <div className="flex flex-col text-[8px] font-bold border-b border-gray-50 pb-1">
-                      <span className="text-gray-400 text-[6px]">CUISSON</span>
-                      <span className="font-black">{formatDuration(task.cookTime)}</span>
+                    <div className="bg-gray-100 p-2 rounded">
+                      <div className="text-[10px] font-black text-gray-500 uppercase">Temps Cuisson</div>
+                      <div className="text-sm font-black">{formatDuration(task.cookTime)}</div>
                     </div>
-                    <div className="bg-red-50 border border-red-100 p-1 text-center rounded">
-                      <div className="text-[6px] font-black text-red-400 mb-0.5">DLC</div>
-                      <div className="text-[8px] font-black text-red-900">{format(expiry, 'dd/MM/yy HH:mm')}</div>
+                    <div className="bg-red-600 text-white p-2 rounded text-center">
+                      <div className="text-[10px] font-black uppercase">Consommer avant</div>
+                      <div className="text-lg font-black">{format(expiry, 'dd/MM/yy HH:mm')}</div>
                     </div>
                   </div>
 
-                  {/* Droite : Instructions (CORRIGÉ POUR VERCEL) */}
-                  <div className="flex-1" style={{ display: 'block' }}>
-                    <div className="font-black uppercase text-gray-300 text-[7px] mb-1">Instructions</div>
-                    <div className="italic text-gray-800 bg-gray-50 p-2 rounded text-[9px] leading-tight break-words" 
-                         style={{ display: 'block', height: 'auto', minHeight: '50px' }}>
-                      {task.comments || "Suivre les protocoles d'hygiène habituels."}
+                  {/* INSTRUCTIONS BOX (TEXTE COMPLET) */}
+                  <div className="flex-1 border-l-2 border-gray-100 pl-6">
+                    <div className="text-[12px] font-black uppercase text-gray-400 mb-2">Instructions de préparation :</div>
+                    <div className="text-[14px] leading-relaxed font-medium text-gray-900 whitespace-pre-wrap">
+                      {task.comments || "Aucune instruction spécifique. Respecter les protocoles de sécurité alimentaire standards."}
                     </div>
                     
-                    <div className="mt-2 pt-2 border-t border-black/5 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[6px] font-black text-gray-400 uppercase w-8">Lot:</span>
-                        <div className="flex-1 border-b border-gray-200 h-2"></div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[6px] font-black text-gray-400 uppercase w-8">T° Ref:</span>
-                        <div className="flex-1 border-b border-gray-200 h-2"></div>
-                      </div>
+                    <div className="mt-6 pt-4 border-t-2 border-dotted border-gray-200 grid grid-cols-2 gap-4">
+                      <div className="border-b-2 border-black h-10 flex items-end pb-1 text-[10px] font-black uppercase text-gray-400">N° de Lot / Étiquette</div>
+                      <div className="border-b-2 border-black h-10 flex items-end pb-1 text-[10px] font-black uppercase text-gray-400">Température de Refroidissement</div>
                     </div>
                   </div>
                 </div>

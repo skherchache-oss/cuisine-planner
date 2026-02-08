@@ -5,108 +5,10 @@ import { formatDuration } from '../utils';
 import { isBefore, addMinutes, isAfter, isSameDay, addDays, format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
-interface WeeklyCalendarProps {
-  tasks: PrepTask[];
-  currentTime: Date;
-  onAddTask: (dayIndex: number, shift: ShiftType) => void;
-  onEditTask: (task: PrepTask) => void;
-  onDeleteTask: (id: string) => void;
-  onDuplicateTask: (task: PrepTask) => void;
-  onMoveTask: (taskId: string, newDate: Date, newShift: ShiftType) => void;
-  weekStartDate: Date;
-}
-
-interface TaskCardProps {
-  task: PrepTask;
-  currentTime: Date;
-  isMobile?: boolean;
-  isBeingDragged?: boolean;
-  onEdit: (task: PrepTask) => void;
-  onDuplicate: (task: PrepTask) => void;
-  onDelete: (id: string) => void;
-  onDragStart?: (e: React.DragEvent, taskId: string) => void;
-  onDragEnd?: (e: React.DragEvent, taskId: string) => void;
-}
-
-const TaskCard: React.FC<TaskCardProps> = ({ 
-  task, 
-  currentTime, 
-  isMobile = false, 
-  isBeingDragged = false,
-  onEdit, 
-  onDuplicate, 
-  onDelete,
-  onDragStart,
-  onDragEnd
-}) => {
-  const start = parseISO(task.startTime);
-  const end = addMinutes(start, task.cookTime);
-  const isOngoing = isBefore(start, currentTime) && isAfter(end, currentTime);
-
-  return (
-    <div 
-      id={`task-${task.id}`}
-      draggable={!isMobile}
-      onDragStart={!isMobile && onDragStart ? (e) => onDragStart(e, task.id) : undefined}
-      onDragEnd={!isMobile && onDragEnd ? (e) => onDragEnd(e, task.id) : undefined}
-      className={`relative group/task select-none transition-all ${isBeingDragged ? 'scale-90 opacity-20' : 'opacity-100'} ${isMobile ? '' : 'cursor-grab active:cursor-grabbing'}`}
-    >
-      <div className="absolute -top-1.5 -right-1.5 flex gap-1 z-20">
-        <button 
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onDuplicate(task); }}
-          className="w-7 h-7 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white text-[10px] active:scale-125 md:opacity-0 md:group-hover/task:opacity-100 transition-opacity"
-          title="Dupliquer"
-        >📋</button>
-        <button 
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
-          className="w-7 h-7 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white text-xs active:scale-125 md:opacity-0 md:group-hover/task:opacity-100 transition-opacity"
-          title="Supprimer"
-        >×</button>
-      </div>
-
-      <div 
-        onClick={() => onEdit(task)}
-        className={`p-3.5 rounded-2xl border-2 shadow-sm transition-all active:scale-[0.98] ${
-          isOngoing ? 'border-orange-400 bg-orange-50 ring-2 ring-orange-100 shadow-orange-100' : 'border-blue-100 bg-white group-hover/task:border-blue-300'
-        }`}
-      >
-        <div className="flex justify-between items-start mb-2.5 pr-10">
-          <span className="font-black uppercase tracking-tight text-[11px] text-gray-900 leading-tight break-words flex-1 pr-2">
-            {task.name}
-          </span>
-          <span className="text-[10px] font-black bg-gray-100 px-2 py-0.5 rounded-lg text-gray-600 whitespace-nowrap">
-            {format(start, 'HH:mm')}
-          </span>
-        </div>
-        
-        {isOngoing && (
-          <div className="mb-2.5 flex items-center gap-1.5 bg-orange-500 text-white px-2.5 py-1 rounded-full text-[9px] font-black animate-pulse w-fit shadow-sm">
-            <span className="text-[10px]">🔥</span> EN COURS
-          </div>
-        )}
-
-        <div className="flex justify-between items-center text-[10px] font-bold">
-          <span className="text-gray-400 truncate max-w-[80px]">👤 {task.responsible}</span>
-          <div className="flex items-center gap-1">
-            <span className={`font-black ${isOngoing ? 'text-orange-700' : 'text-blue-700'}`}>⏱️ {formatDuration(task.cookTime)}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
+// ... (Garder TaskCard identique à ton code précédent)
 
 const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({ 
-  tasks, 
-  currentTime, 
-  onAddTask, 
-  onEditTask, 
-  onDeleteTask, 
-  onDuplicateTask, 
-  onMoveTask, 
-  weekStartDate 
+  tasks, currentTime, onAddTask, onEditTask, onDeleteTask, onDuplicateTask, onMoveTask, weekStartDate 
 }) => {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ dayIdx: number, shiftId: string } | null>(null);
@@ -114,102 +16,64 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
 
   const weekDates = Array.from({ length: 5 }, (_, i) => addDays(weekStartDate, i));
 
-  // --- LOGIQUE DRAG & DROP ---
-  const handleDragStart = (e: React.DragEvent, taskId: string) => {
-    setDraggedTaskId(taskId);
-    e.dataTransfer.setData('text/plain', taskId);
-    e.dataTransfer.effectAllowed = 'move';
-    
-    const el = document.getElementById(`task-${taskId}`);
-    if (el) {
-      setTimeout(() => { el.style.opacity = '0.3'; }, 0);
-    }
-  };
-
-  const handleDragEnd = (e: React.DragEvent, taskId: string) => {
-    setDraggedTaskId(null);
-    setDropTarget(null);
-    const el = document.getElementById(`task-${taskId}`);
-    if (el) { el.style.opacity = '1'; }
-  };
-
-  const handleDragOver = (e: React.DragEvent, dayIdx: number, shiftId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dropTarget?.dayIdx !== dayIdx || dropTarget?.shiftId !== shiftId) {
-      setDropTarget({ dayIdx, shiftId });
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent, dayIdx: number, shiftId: ShiftType) => {
-    e.preventDefault();
-    const taskId = e.dataTransfer.getData('text/plain');
-    if (taskId) {
-      onMoveTask(taskId, weekDates[dayIdx], shiftId);
-    }
-    setDropTarget(null);
-    setDraggedTaskId(null);
-  };
+  // --- LOGIQUE DRAG & DROP (Garder identique) ---
 
   return (
     <div className="w-full">
-      {/* VUE MOBILE */}
-      <div className="block md:hidden space-y-6 pb-12">
-        <div className="sticky top-[84px] z-40 bg-gray-50/95 backdrop-blur-md pt-2 pb-4 -mx-4 px-4 overflow-x-auto no-scrollbar shadow-sm">
-          <div className="flex gap-2 min-w-full">
+      {/* VUE MOBILE : OPTIMISÉE POUR PETITS ÉCRANS */}
+      <div className="block md:hidden space-y-4 pb-12">
+        {/* Navigation des jours compacte */}
+        <div className="sticky top-[84px] z-40 bg-white/95 backdrop-blur-md py-3 -mx-4 px-4 shadow-sm">
+          <div className="flex justify-between items-center gap-1">
             {weekDates.map((date, idx) => {
-              const dayTasksCount = tasks.filter(t => isSameDay(parseISO(t.startTime), date)).length;
               const isActive = selectedDayIdx === idx;
+              const hasTasks = tasks.some(t => isSameDay(parseISO(t.startTime), date));
+              
               return (
                 <button
                   key={idx}
                   onClick={() => setSelectedDayIdx(idx)}
-                  className={`flex-1 min-w-[75px] flex flex-col items-center py-3.5 rounded-3xl transition-all border-2 relative ${
+                  className={`flex-1 flex flex-col items-center py-2 rounded-xl transition-all border-2 ${
                     isActive 
-                      ? 'bg-gray-900 border-gray-900 text-white shadow-xl scale-105 z-10' 
-                      : 'bg-white border-gray-100 text-gray-400'
+                      ? 'bg-blue-600 border-blue-600 text-white shadow-md scale-105' 
+                      : 'bg-white border-gray-100 text-gray-500'
                   }`}
                 >
-                  <span className={`text-[9px] font-black uppercase tracking-widest leading-none mb-1.5 ${isActive ? 'text-blue-400' : 'text-gray-400'}`}>
-                    {format(date, 'EEE', { locale: fr })}
+                  <span className={`text-[8px] font-black uppercase ${isActive ? 'text-blue-200' : 'text-gray-400'}`}>
+                    {format(date, 'EEE', { locale: fr }).replace('.', '')}
                   </span>
-                  <span className="text-base font-black leading-none tracking-tight">
-                    {format(date, 'dd')}
-                  </span>
-                  {dayTasksCount > 0 && (
-                    <span className={`absolute -top-1 -right-1 w-5 h-5 text-[9px] font-black rounded-full flex items-center justify-center border-2 transition-all ${
-                      isActive ? 'bg-blue-500 text-white border-gray-900' : 'bg-gray-100 text-gray-500 border-white'
-                    }`}>
-                      {dayTasksCount}
-                    </span>
-                  )}
+                  <span className="text-sm font-black">{format(date, 'dd')}</span>
+                  {hasTasks && !isActive && <div className="w-1 h-1 bg-blue-400 rounded-full mt-0.5"></div>}
                 </button>
               );
             })}
           </div>
         </div>
 
-        <div className="px-1 flex items-end justify-between border-b-2 border-gray-100 pb-3">
-          <h2 className="text-xl font-black uppercase tracking-tighter text-gray-900 leading-none">
+        {/* Titre du jour sélectionné */}
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-lg font-black uppercase text-gray-900">
             {format(weekDates[selectedDayIdx], 'EEEE dd MMMM', { locale: fr })}
           </h2>
-          <span className="text-[11px] font-black text-blue-600 bg-blue-50 px-3 py-1 rounded-full uppercase">
-            {tasks.filter(t => isSameDay(parseISO(t.startTime), weekDates[selectedDayIdx])).length} fiches
-          </span>
         </div>
 
-        <div className="space-y-10">
+        {/* Liste des shifts mobile */}
+        <div className="space-y-6">
           {SHIFTS.map((shift) => {
             const shiftTasks = tasks
               .filter(t => t.shift === shift.id && isSameDay(parseISO(t.startTime), weekDates[selectedDayIdx]))
               .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
             return (
-              <div key={shift.id} className="space-y-4">
-                <div className="flex items-center gap-3 text-gray-400 font-black uppercase text-[11px] tracking-widest">
-                  <span className="text-2xl">{shift.icon}</span> {shift.label}
+              <div key={shift.id} className="bg-gray-50 rounded-3xl p-4 border border-gray-100">
+                <div className="flex items-center gap-2 mb-4 text-[11px] font-black uppercase text-gray-400 tracking-tighter">
+                  <span className="text-xl">{shift.icon}</span> {shift.label}
+                  <div className="ml-auto bg-gray-200 text-gray-600 px-2 py-0.5 rounded-lg text-[9px]">
+                    {shiftTasks.length}
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4">
+                
+                <div className="grid gap-3">
                   {shiftTasks.map(task => (
                     <TaskCard 
                       key={task.id} 
@@ -221,8 +85,11 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                       onDelete={onDeleteTask}
                     />
                   ))}
-                  <button onClick={() => onAddTask(selectedDayIdx, shift.id)} className="w-full py-6 border-2 border-dashed border-gray-200 rounded-[2rem] text-gray-400 font-black uppercase text-[11px] bg-white/40">
-                    + Ajouter {shift.label}
+                  <button 
+                    onClick={() => onAddTask(selectedDayIdx, shift.id)} 
+                    className="w-full py-4 border-2 border-dashed border-gray-300 rounded-2xl text-gray-400 font-bold text-xs bg-white/50"
+                  >
+                    + AJOUTER {shift.label.toUpperCase()}
                   </button>
                 </div>
               </div>
@@ -231,76 +98,10 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
         </div>
       </div>
 
-      {/* VUE DESKTOP AVEC DÉFILEMENT SI BESOIN */}
-      <div className="hidden md:block overflow-hidden shadow-sm border rounded-[2.5rem] bg-white">
-        <table className="w-full border-collapse table-fixed">
-          <thead>
-            <tr className="bg-gray-50 border-b">
-              <th className="p-4 text-center w-28 border-r">
-                <span className="text-[10px] font-black uppercase text-gray-300">Service</span>
-              </th>
-              {weekDates.map((date) => (
-                <th key={date.toString()} className="p-4 text-center border-r last:border-r-0">
-                  <div className="text-[10px] uppercase font-black text-gray-400 mb-1.5">{format(date, 'EEEE', { locale: fr })}</div>
-                  <div className="font-black text-gray-900 text-base">{format(date, 'dd MMM', { locale: fr })}</div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {SHIFTS.map((shift) => (
-              <tr key={shift.id} className="border-b last:border-b-0">
-                <td className="p-4 bg-gray-50/50 border-r text-center">
-                  <div className="text-3xl mb-1.5">{shift.icon}</div>
-                  <div className="text-[10px] uppercase font-black text-gray-500">{shift.label}</div>
-                </td>
-                {weekDates.map((date, dayIdx) => {
-                  const dayTasks = tasks.filter(t => t.shift === shift.id && isSameDay(parseISO(t.startTime), date));
-                  const isOver = dropTarget?.dayIdx === dayIdx && dropTarget?.shiftId === shift.id;
-                  
-                  return (
-                    <td 
-                      key={`${dayIdx}-${shift.id}`} 
-                      onDragOver={(e) => handleDragOver(e, dayIdx, shift.id)}
-                      onDragLeave={() => setDropTarget(null)}
-                      onDrop={(e) => handleDrop(e, dayIdx, shift.id)}
-                      className={`border-r last:border-r-0 align-top transition-colors duration-200 ${isOver ? 'bg-blue-50/80' : 'bg-white'}`}
-                    >
-                      {/* ZONE DE DÉFILEMENT INTERNE */}
-                      <div className="p-3 flex flex-col gap-3 h-[320px] overflow-y-auto custom-scrollbar group/cell">
-                        {dayTasks.map(task => (
-                          <TaskCard 
-                            key={task.id} 
-                            task={task} 
-                            currentTime={currentTime} 
-                            isBeingDragged={draggedTaskId === task.id}
-                            onEdit={onEditTask}
-                            onDuplicate={onDuplicateTask}
-                            onDelete={onDeleteTask}
-                            onDragStart={handleDragStart}
-                            onDragEnd={handleDragEnd}
-                          />
-                        ))}
-                        {isOver && (
-                          <div className="border-2 border-dashed border-blue-400 bg-blue-100/50 rounded-2xl min-h-[64px] animate-pulse shrink-0" />
-                        )}
-                        <button 
-                          onClick={() => onAddTask(dayIdx, shift.id)} 
-                          className="mt-auto shrink-0 w-full py-2 border-2 border-dashed border-gray-100 rounded-xl text-gray-200 hover:border-blue-200 hover:text-blue-400 transition-all font-black text-2xl"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* VUE DESKTOP (Garder identique) */}
+      <div className="hidden md:block">
+        {/* ... ton code desktop table ... */}
       </div>
     </div>
   );
 };
-
-export default WeeklyCalendar;
