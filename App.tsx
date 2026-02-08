@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { format, addWeeks, startOfWeek, addDays, isBefore, addMinutes, isAfter, setHours, setMinutes, parseISO } from 'date-fns';
+import { format, addWeeks, startOfWeek, addDays, isBefore, addMinutes, isAfter, setHours, setMinutes, parseISO, isSameDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -105,8 +105,21 @@ const App: React.FC = () => {
   // --- LOGIQUE TACHES ---
   const handleAddTask = (dayIdx: number, shift: ShiftType) => {
     const dayDate = addDays(currentWeekStart, dayIdx);
+    // On fixe l'heure par défaut à 08:00 le jour sélectionné
     const dateAt8AM = format(setMinutes(setHours(dayDate, 8), 0), "yyyy-MM-dd'T'HH:mm");
-    setModalInitialData({ id: undefined, name: '', dayOfWeek: dayIdx, shift, startTime: dateAt8AM, responsible: STAFF_LIST[0], prepTime: 15, cookTime: 60, packingTime: 10, shelfLifeDays: 3 });
+    
+    setModalInitialData({ 
+      id: undefined, 
+      name: '', 
+      dayOfWeek: dayIdx, 
+      shift, 
+      startTime: dateAt8AM, 
+      responsible: STAFF_LIST[0], 
+      prepTime: 15, 
+      cookTime: 60, 
+      packingTime: 10, 
+      shelfLifeDays: 3 
+    });
     setEditingTask(undefined);
     setIsModalOpen(true);
   };
@@ -136,7 +149,12 @@ const App: React.FC = () => {
       if (task.id === taskId) {
         const oldStart = parseISO(task.startTime);
         const updatedStart = setMinutes(setHours(newDate, oldStart.getHours()), oldStart.getMinutes());
-        return { ...task, startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"), shift: newShift, dayOfWeek: (updatedStart.getDay() + 6) % 7 };
+        return { 
+          ...task, 
+          startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"), 
+          shift: newShift, 
+          dayOfWeek: (updatedStart.getDay() + 6) % 7 
+        };
       }
       return task;
     }));
@@ -145,7 +163,13 @@ const App: React.FC = () => {
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
     setIsGeneratingPdf(true);
-    const opt = { margin: 0, filename: `Cuisine_${weekLabel}.pdf`, image: { type: 'jpeg', quality: 1.0 }, html2canvas: { scale: 2, useCORS: true, width: 1122 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } };
+    const opt = { 
+      margin: 0, 
+      filename: `Cuisine_${weekLabel}.pdf`, 
+      image: { type: 'jpeg', quality: 1.0 }, 
+      html2canvas: { scale: 2, useCORS: true, width: 1122 }, 
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } 
+    };
     try { await html2pdf().set(opt).from(printRef.current).save(); } finally { setIsGeneratingPdf(false); }
   };
 
@@ -161,6 +185,12 @@ const App: React.FC = () => {
       return { ...task, status, remainingSeconds };
     })
     .filter(t => t.status !== 'none');
+
+  // Filtrage des tâches pour n'afficher que celles de la semaine en cours dans le PDF
+  const tasksForCurrentWeek = tasks.filter(task => {
+    const taskDate = parseISO(task.startTime);
+    return taskDate >= currentWeekStart && taskDate < addDays(currentWeekStart, 7);
+  });
 
   return (
     <div className="min-h-screen bg-gray-50 pb-28">
@@ -235,10 +265,21 @@ const App: React.FC = () => {
       </div>
 
       <div style={{ position: 'absolute', left: '-9999px', top: '0', zIndex: -1 }}>
-        <div ref={printRef}><PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} /></div>
+        <div ref={printRef}>
+          <PrintLayout 
+            tasks={tasksForCurrentWeek} 
+            weekLabel={weekLabel} 
+            weekStartDate={currentWeekStart} 
+          />
+        </div>
       </div>
 
-      <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveTask} initialTask={editingTask || modalInitialData} />
+      <TaskModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSave={handleSaveTask} 
+        initialTask={editingTask || modalInitialData} 
+      />
     </div>
   );
 };

@@ -24,7 +24,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, initialT
     packingTime: 10,
     shelfLifeDays: 3,
     startTime: getDefaultTime(),
-    shift: 'morning',
+    shift: 'Matin',
     dayOfWeek: 0,
     comments: '',
   });
@@ -47,7 +47,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, initialT
         packingTime: initialTask.packingTime ?? 10,
         shelfLifeDays: initialTask.shelfLifeDays ?? 3,
         startTime: initialTask.startTime || getDefaultTime(),
-        shift: initialTask.shift || 'morning',
+        shift: initialTask.shift || 'Matin',
         dayOfWeek: initialTask.dayOfWeek ?? 0,
         comments: initialTask.comments || '',
       });
@@ -80,9 +80,10 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, initialT
 
     const finalResponsible = formData.responsible === 'Autre' ? customResponsible : formData.responsible;
     
+    // Calcul précis du jour de la semaine (0=Lundi, 4=Vendredi)
     const taskDate = parseISO(formData.startTime || getDefaultTime());
-    let calculatedDayIdx = getDay(taskDate) - 1;
-    if (calculatedDayIdx < 0) calculatedDayIdx = 6;
+    let calculatedDayIdx = getDay(taskDate) - 1; 
+    if (calculatedDayIdx < 0) calculatedDayIdx = 6; // Gère le dimanche
 
     onSave({
       id: formData.id || crypto.randomUUID(),
@@ -94,7 +95,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, initialT
       shelfLifeDays: Number(formData.shelfLifeDays),
       startTime: formData.startTime || getDefaultTime(),
       dayOfWeek: calculatedDayIdx, 
-      shift: formData.shift || 'morning',
+      shift: formData.shift || 'Matin',
       color: 'blue',
       comments: formData.comments || ''
     } as PrepTask);

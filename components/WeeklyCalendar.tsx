@@ -48,8 +48,9 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
             {/* Grille des shifts */}
             <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               {shifts.map((shift) => {
+                // CORRECTION : Filtrage par date exacte pour éviter les répétitions hebdomadaires
                 const shiftTasks = tasks.filter(
-                  (t) => t.dayOfWeek === dayIdx && t.shift === shift
+                  (t) => isSameDay(new Date(t.startTime), currentDayDate) && t.shift === shift
                 );
 
                 return (
