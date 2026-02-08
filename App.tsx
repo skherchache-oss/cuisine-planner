@@ -4,12 +4,12 @@ import { fr } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-// Imports types et constantes (sans .ts pour Vite)
+// Imports types et constantes
 import { PrepTask, ShiftType } from './types';
 import { STAFF_LIST } from './constants';
 import { checkTasksForAlerts } from './services/notificationService';
 
-// Composants (Vérifie bien que le dossier components est à la racine)
+// Composants
 import WeeklyCalendar from './components/WeeklyCalendar';
 import TaskModal from './components/TaskModal';
 import PrintLayout from './components/PrintLayout';
@@ -149,16 +149,17 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 md:pb-20 overflow-x-hidden">
-      <div className="no-print bg-gray-900 text-white py-1.5 px-4 text-[9px] font-black tracking-[0.4em] text-center uppercase border-b border-gray-800">
-        PRODUCTION SYSTEM v2.5
+      {/* Barre supérieure noire avec BISTROT M à gauche */}
+      <div className="no-print bg-gray-900 text-white py-1.5 px-4 text-[9px] font-black tracking-[0.4em] flex justify-between uppercase border-b border-gray-800">
+        <span>BISTROT M — PRODUCTION SYSTEM v2.5</span>
+        <span className="opacity-50">STABLE CLOUD</span>
       </div>
 
       <header className="no-print bg-white border-b shadow-sm sticky top-0 z-[60]">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             <div className="bg-blue-600 w-9 h-9 flex items-center justify-center rounded-xl text-white font-black text-xl shadow-lg border border-white/20">🍽️</div>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3 leading-none">
-              <span className="text-[10px] sm:text-[12px] font-black text-blue-600 uppercase tracking-[0.2em]">BISTROT M</span>
+            <div className="flex flex-col leading-none">
               <h1 className="font-black text-gray-900 text-sm sm:text-lg tracking-tight uppercase">CUISINE PLANNER</h1>
             </div>
           </div>
