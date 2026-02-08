@@ -24,7 +24,6 @@ const App: React.FC = () => {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   
-  // État pour activer/désactiver les alertes manuellement
   const [isAlertsEnabled, setIsAlertsEnabled] = useState<boolean>(() => {
     return localStorage.getItem('alerts_enabled') === 'true';
   });
@@ -35,7 +34,9 @@ const App: React.FC = () => {
 
   const currentWeekStart = startOfDay(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }));
   const currentWeekEnd = addDays(currentWeekStart, 4);
-  const weekLabel = `Semaine du ${format(currentWeekStart, 'dd MMMM', { locale: fr })} au ${format(currentWeekEnd, 'dd MMMM', { locale: fr })}`;
+  
+  // Formatage du label pour tenir sur 2 lignes max
+  const weekLabel = `Semaine du ${format(currentWeekStart, 'dd MMM')} au ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
 
   useEffect(() => {
     const saved = localStorage.getItem('cuisine_tasks');
@@ -49,12 +50,9 @@ const App: React.FC = () => {
     localStorage.setItem('alerts_enabled', String(isAlertsEnabled));
   }, [tasks, isAlertsEnabled]);
 
-  // Surveillance des alertes
   useEffect(() => {
     const interval = setInterval(() => {
-      const now = new Date();
-      setCurrentTime(now);
-      // On ne vérifie les alertes QUE si l'utilisateur les a activées
+      setCurrentTime(new Date());
       if (isAlertsEnabled) {
         checkTasksForAlerts(tasks);
       }
@@ -62,24 +60,18 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [tasks, isAlertsEnabled]);
 
-  // --- ACTIONS ---
-
   const handleToggleAlerts = async (e: React.MouseEvent) => {
     e.preventDefault();
-    
     if (!isAlertsEnabled) {
-      // Activer les alertes
       const permission = await requestNotificationPermission();
       setNotifPermission(permission || 'default');
-      
       if (permission === 'granted') {
         setIsAlertsEnabled(true);
         new Notification("BISTROT M", { body: "Alertes activées ✅" });
       } else {
-        alert("Permission refusée. Activez les notifications dans votre navigateur.");
+        alert("Permission refusée.");
       }
     } else {
-      // Désactiver les alertes
       setIsAlertsEnabled(false);
     }
   };
@@ -87,22 +79,22 @@ const App: React.FC = () => {
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(tasks, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-    const linkElement = document.createElement('a');
-    linkElement.setAttribute('href', dataUri);
-    linkElement.setAttribute('download', `backup-planner-${format(new Date(), 'yyyy-MM-dd')}.json`);
-    linkElement.click();
+    const link = document.createElement('a');
+    link.setAttribute('href', dataUri);
+    link.setAttribute('download', `backup-${format(new Date(), 'dd-MM-yy')}.json`);
+    link.click();
   };
 
   const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const fileReader = new FileReader();
+    const reader = new FileReader();
     if (!event.target.files?.[0]) return;
-    fileReader.onload = (e) => {
+    reader.onload = (e) => {
       try {
         const imported = JSON.parse(e.target?.result as string);
         if (Array.isArray(imported)) { setTasks(imported); setIsSettingsOpen(false); }
       } catch (err) { alert('Fichier invalide'); }
     };
-    fileReader.readAsText(event.target.files[0]);
+    reader.readAsText(event.target.files[0]);
   };
 
   const handleSaveTask = (task: PrepTask) => {
@@ -136,20 +128,24 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-3 py-4 md:py-6 flex flex-col gap-4">
           <div className="flex items-center justify-between gap-2">
             
-            <div className="flex-1 flex items-center bg-slate-900 rounded-3xl p-1.5 shadow-xl">
-              <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-12 h-12 flex items-center justify-center text-white active:scale-90">
-                <span className="text-2xl font-bold">‹</span>
+            {/* SÉLECTEUR DE SEMAINE OPTIMISÉ 2 LIGNES */}
+            <div className="flex-1 flex items-center bg-slate-900 rounded-3xl p-1 shadow-xl max-w-[70%]">
+              <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
+                <span className="text-xl font-bold">‹</span>
               </button>
-              <div className="flex-1 text-center">
-                <h1 className="text-white font-black text-[12px] md:text-lg uppercase tracking-tight px-2">{weekLabel}</h1>
+              
+              <div className="flex-1 text-center py-1">
+                <h1 className="text-white font-black text-[11px] md:text-base uppercase tracking-tight leading-tight px-1">
+                  {weekLabel}
+                </h1>
               </div>
-              <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-12 h-12 flex items-center justify-center text-white active:scale-90">
-                <span className="text-2xl font-bold">›</span>
+
+              <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
+                <span className="text-xl font-bold">›</span>
               </button>
             </div>
 
             <div className="flex items-center gap-2">
-              {/* BOUTON ALERTE AVEC TOGGLE */}
               <button 
                 onClick={handleToggleAlerts}
                 className={`w-14 h-14 flex flex-col items-center justify-center rounded-[1.5rem] border-2 transition-all shadow-md active:scale-75 ${
