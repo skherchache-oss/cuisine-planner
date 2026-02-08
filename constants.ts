@@ -1,5 +1,5 @@
-// AJOUT DE L'EXTENSION .ts POUR BABEL
-import { ShiftType } from './types.ts';
+
+import { ShiftType } from './types';
 
 export const DAYS_FR = [
   'Lundi',
