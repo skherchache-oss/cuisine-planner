@@ -14,7 +14,6 @@ import { STAFF_LIST } from './constants';
 declare const html2pdf: any;
 
 // INITIALISATION IA : Standard Vite pour Vercel
-// Assure-toi de créer une variable d'environnement VITE_GEMINI_API_KEY sur Vercel
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(API_KEY);
 
@@ -28,6 +27,9 @@ const App: React.FC = () => {
   const [notifPermission, setNotifPermission] = useState<string>('default');
   const [currentTime, setCurrentTime] = useState(new Date());
   const printRef = useRef<HTMLDivElement>(null);
+  
+  // Ref pour l'input de fichier caché
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentWeekStart = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 });
   const currentWeekEnd = addDays(currentWeekStart, 4);
@@ -58,6 +60,52 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [tasks]);
 
+  // --- NOUVELLES FONCTIONS DATA MANAGEMENT ---
+  const handleExportJSON = () => {
+    const dataStr = JSON.stringify(tasks, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const exportFileDefaultName = `planning_cuisine_${format(new Date(), 'dd-MM-yyyy')}.json`;
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const json = JSON.parse(e.target?.result as string);
+        if (Array.isArray(json)) {
+          if (window.confirm("Importer ces données ? Cela remplacera votre planning actuel sur cet appareil.")) {
+            setTasks(json);
+          }
+        } else {
+          alert("Le fichier JSON n'est pas au bon format.");
+        }
+      } catch (err) {
+        alert("Erreur lors de la lecture du fichier JSON.");
+      }
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleResetAll = () => {
+    const firstConfirm = window.confirm("⚠️ ATTENTION : Vous allez supprimer TOUTES les fiches de production. Voulez-vous continuer ?");
+    if (firstConfirm) {
+      const secondConfirm = window.confirm("Action irréversible. Confirmez-vous la suppression totale ?");
+      if (secondConfirm) {
+        setTasks([]);
+        localStorage.removeItem('cuisine_tasks');
+      }
+    }
+  };
+
+  // --- FONCTIONS EXISTANTES CONSERVÉES ---
   const handleRequestPermission = async () => {
     const permission = await requestNotificationPermission();
     setNotifPermission(permission || 'denied');
@@ -135,12 +183,7 @@ const App: React.FC = () => {
       margin: 0,
       filename: `Cuisine_Planning_${weekLabel.replace(/ /g, '_')}.pdf`,
       image: { type: 'jpeg', quality: 1.0 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true, 
-        letterRendering: true, 
-        width: 1122 
-      },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true, width: 1122 },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
       pagebreak: { mode: ['css', 'legacy'] }
     };
@@ -174,13 +217,45 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <header className="no-print bg-white border-b shadow-sm py-3 sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="bg-blue-600 w-10 h-10 flex items-center justify-center rounded-xl text-white font-black text-xl shadow-md">🍽️</div>
             <h1 className="font-black text-gray-900 leading-none text-xl tracking-tighter">Cuisine Planner</h1>
           </div>
           
           <div className="flex items-center gap-2 sm:gap-4">
+            {/* BOUTONS DATA MANAGEMENT */}
+            <div className="flex bg-gray-100 rounded-lg p-1 border border-gray-200 shadow-inner">
+              <button 
+                onClick={handleExportJSON}
+                className="px-2 py-1 text-[9px] font-black uppercase tracking-wider text-gray-500 hover:text-blue-600 transition-colors"
+                title="Sauvegarder les données"
+              >
+                📤 Export
+              </button>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="px-2 py-1 text-[9px] font-black uppercase tracking-wider text-gray-500 hover:text-green-600 transition-colors"
+                title="Restaurer les données"
+              >
+                📥 Import
+              </button>
+              <button 
+                onClick={handleResetAll}
+                className="px-2 py-1 text-[9px] font-black uppercase tracking-wider text-gray-400 hover:text-red-600 transition-colors"
+                title="Vider le planning"
+              >
+                🗑️ Reset
+              </button>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept=".json" 
+                onChange={handleImportJSON} 
+              />
+            </div>
+
             <button 
               onClick={handleRequestPermission}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all border ${
