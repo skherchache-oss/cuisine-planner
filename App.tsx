@@ -36,21 +36,23 @@ const App: React.FC = () => {
 
     try {
       const element = printRef.current;
-      // On rend l'élément visible et bien positionné pour la capture
-      element.style.display = 'block';
+      
+      // CONFIGURATION DE CAPTURE (Invisible mais détectable)
+      element.style.display = 'block'; 
       element.style.position = 'fixed';
       element.style.left = '0';
       element.style.top = '0';
-      element.style.zIndex = '9999';
-      
-      // CRUCIAL : On attend que React dessine les données dans le composant
-      await new Promise(resolve => setTimeout(resolve, 500));
+      element.style.opacity = '1';
+      element.style.zIndex = '-1'; // Derrière l'interface
+
+      // On attend un peu plus pour laisser le temps au PrintLayout de mapper les tasks
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
-        width: 1122,
+        width: 1122, // Largeur A4 Paysage en pixels (environ)
         windowWidth: 1122,
         backgroundColor: '#ffffff'
       });
@@ -63,7 +65,7 @@ const App: React.FC = () => {
       });
 
       pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210);
-      pdf.save(`Planning_${format(currentWeekStart, 'yyyy-MM-dd')}.pdf`);
+      pdf.save(`Planning_Cuisine_${format(currentWeekStart, 'yyyy-MM-dd')}.pdf`);
       
     } catch (error) {
       console.error(error);
@@ -78,7 +80,7 @@ const App: React.FC = () => {
     }
   };
 
-  // Filtrage ultra-simple par comparaison de chaînes (YYYY-MM-DD)
+  // Filtrage par comparaison de chaînes (YYYY-MM-DD)
   const tasksForCurrentWeek = tasks.filter(t => {
     const tDateStr = t.startTime.substring(0, 10);
     const weekDays = Array.from({ length: 7 }, (_, i) => 
@@ -134,9 +136,23 @@ const App: React.FC = () => {
         </button>
       </div>
 
-      {/* ZONE DE CAPTURE (Invisible à l'écran mais accessible à html2canvas) */}
-      <div ref={printRef} style={{ display: 'none', position: 'absolute', left: '-10000px' }}>
-        <PrintLayout tasks={tasksForCurrentWeek} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
+      {/* ZONE DE CAPTURE CORRIGÉE */}
+      {/* On utilise l'opacité 0 et un z-index négatif au lieu de display: none initial */}
+      <div 
+        ref={printRef} 
+        style={{ 
+          position: 'absolute', 
+          left: '-10000px', 
+          top: 0, 
+          background: 'white',
+          opacity: 0 
+        }}
+      >
+        <PrintLayout 
+          tasks={tasksForCurrentWeek} 
+          weekLabel={weekLabel} 
+          weekStartDate={currentWeekStart} 
+        />
       </div>
 
       {isModalOpen && (

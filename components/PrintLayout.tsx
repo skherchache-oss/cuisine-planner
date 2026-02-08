@@ -23,14 +23,15 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
   const cleanStartDate = startOfDay(weekStartDate);
   const weekDates = Array.from({ length: 5 }, (_, i) => addDays(cleanStartDate, i));
 
+  // Tri pour les fiches détaillées
   const sortedTasks = [...tasks].sort((a, b) => 
     new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
   );
 
   return (
-    <div className="bg-white text-black font-sans" style={{ width: '297mm', minHeight: '210mm', padding: '8mm', boxSizing: 'border-box' }}>
+    <div className="bg-white text-black font-sans" style={{ width: '297mm', padding: '8mm', boxSizing: 'border-box' }}>
       
-      {/* SECTION 1 : PLANNING HEBDOMADAIRE (DESIGN ORIGINAL) */}
+      {/* SECTION 1 : PLANNING */}
       <section style={{ marginBottom: '10mm' }}>
         <div className="flex justify-between items-center mb-4 border-b-[3px] border-black pb-3">
           <div className="flex items-center gap-4">
@@ -67,14 +68,12 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
                   <div className="text-[8px] font-black uppercase leading-tight">{shift.label}</div>
                 </td>
                 {weekDates.map((dateCol) => {
-                  // On crée la clé de comparaison "YYYY-MM-DD"
-                  const dateStr = format(dateCol, 'yyyy-MM-dd');
+                  const targetDay = format(dateCol, 'yyyy-MM-dd');
                   
-                  // FILTRAGE ROBUSTE PAR CHAÎNE DE CARACTÈRES
+                  // FILTRAGE : On cherche si le texte "2026-02-08" est présent dans startTime
                   const dayTasks = tasks.filter(t => {
-                    // On prend les 10 premiers caractères du startTime ISO
-                    const taskDatePart = t.startTime.substring(0, 10);
-                    return t.shift === shift.id && taskDatePart === dateStr;
+                    const taskDate = t.startTime || "";
+                    return t.shift === shift.id && taskDate.includes(targetDay);
                   });
                   
                   return (
@@ -87,14 +86,9 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
                             </div>
                             <div className="flex justify-between items-center text-[6.5px] font-bold">
                               <span className="truncate max-w-[35%]">👤 {task.responsible}</span>
-                              <span className="whitespace-nowrap">🕒 {task.startTime.substring(11, 16)}</span>
+                              <span className="whitespace-nowrap">🕒 {task.startTime.split('T')[1]?.substring(0,5) || "00:00"}</span>
                               <span className="whitespace-nowrap">🔥 {formatDuration(task.cookTime)}</span>
                             </div>
-                            {task.comments && (
-                              <div className="text-[6px] leading-[1.1] italic text-gray-700 mt-0.5 pt-0.5 border-t border-dotted border-black/10 truncate">
-                                {task.comments}
-                              </div>
-                            )}
                             <div className="mt-1 pt-0.5 border-t border-black/5">
                               <div className="flex items-end gap-1">
                                 <span className="text-[5.5px] font-black uppercase opacity-40 leading-none">Obs:</span>
@@ -111,71 +105,33 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
             ))}
           </tbody>
         </table>
-
-        {/* FOOTER HACCP (DESIGN ORIGINAL) */}
-        <div className="mt-4 grid grid-cols-4 gap-4">
-          <div className="col-span-3 bg-black text-white p-2 rounded-sm flex items-center justify-between">
-            <div className="text-[7.5px] font-bold uppercase leading-tight">
-              Alerte HACCP : Tout produit non étiqueté sera jeté. <br/> Respect strict des temps de refroidissement ( &lt; 10°C en 120 min).
-            </div>
-            <div className="text-right border-l border-white/20 pl-4">
-              <span className="text-[8px] font-black uppercase">Validation Direction :</span>
-              <div className="h-4 w-24 border-b border-white mt-0.5 opacity-30"></div>
-            </div>
-          </div>
-          <div className="col-span-1 border-[1.5px] border-black p-1 text-[7px] font-black uppercase text-center flex items-center justify-center">
-            Document Contrôlé le {format(new Date(), 'dd/MM/yyyy')}
-          </div>
-        </div>
       </section>
 
-      {/* SECTION 2 : FICHES DÉTAILLÉES (DESIGN ORIGINAL) */}
-      <section className="mt-8" style={{ pageBreakBefore: 'always' }}>
-        <h2 className="text-xl font-black uppercase border-b-4 border-black pb-1 mb-6">Détails des Fiches de Production</h2>
+      {/* SECTION 2 : FICHES DÉTAILLÉES */}
+      <section className="mt-8">
+        <h2 className="text-xl font-black uppercase border-b-4 border-black pb-1 mb-6">Détails des Fiches</h2>
         <div className="grid grid-cols-2 gap-4">
-          {sortedTasks.map((task) => {
-            const startTime = parseISO(task.startTime);
-            const dlcDate = addDays(startTime, task.shelfLifeDays);
-
-            return (
-              <div key={task.id} style={{ breakInside: 'avoid' }} className="border-[2px] border-black rounded-lg overflow-hidden mb-4">
-                <div className="bg-gray-100 p-2 border-b-[2px] border-black flex justify-between items-center">
-                  <div className="font-black text-xs uppercase">{task.name}</div>
-                  <div className="text-[9px] font-bold uppercase">
-                    {format(startTime, 'EEEE dd MMMM', { locale: fr })} | 👤 {task.responsible}
-                  </div>
-                </div>
-
-                <div className="p-3 grid grid-cols-3 gap-4">
-                  <div className="col-span-1 text-[9px] space-y-1">
-                    <div className="flex justify-between border-b border-black/10 pb-1">
-                      <span className="font-black opacity-50 uppercase">Préparation</span>
-                      <span className="font-bold">{task.prepTime}m</span>
-                    </div>
-                    <div className="flex justify-between border-b border-black/10 pb-1">
-                      <span className="font-black opacity-50 uppercase">Cuisson</span>
-                      <span className="font-bold">{formatDuration(task.cookTime)}</span>
-                    </div>
-                    <div className="bg-black text-white p-1.5 mt-2 rounded-sm text-center">
-                      <div className="text-[7px] font-black opacity-60 uppercase">DLC Estimée</div>
-                      <div className="text-[9px] font-black">{format(dlcDate, 'dd/MM/yy')}</div>
-                    </div>
-                  </div>
-
-                  <div className="col-span-2 text-[9px] bg-gray-50 p-2 rounded-sm border border-black/5">
-                    <div className="font-black uppercase opacity-30 text-[7px] mb-1">Instructions</div>
-                    <div className="italic leading-tight mb-2">
-                      {task.comments || "Aucune instruction particulière."}
-                    </div>
-                    <div className="mt-2 border-t border-black/10 pt-2">
-                      <div className="font-black uppercase opacity-30 text-[7px] mb-2">Observations (manuscrit)</div>
-                      <div className="border-b border-dotted border-black/30 h-5"></div>
-                    </div>
-                  </div>
+          {sortedTasks.map((task) => (
+            <div key={task.id} style={{ breakInside: 'avoid' }} className="border-[2px] border-black rounded-lg overflow-hidden mb-4">
+              <div className="bg-gray-100 p-2 border-b-[2px] border-black flex justify-between items-center">
+                <div className="font-black text-xs uppercase">{task.name}</div>
+                <div className="text-[9px] font-bold uppercase">
+                  👤 {task.responsible}
                 </div>
               </div>
-            );
-          })}
+              <div className="p-3 grid grid-cols-3 gap-4">
+                <div className="col-span-1 text-[9px] space-y-1">
+                  <div className="flex justify-between border-b border-black/10 pb-1">
+                    <span className="font-black opacity-50 uppercase">Cuisson</span>
+                    <span className="font-bold">{formatDuration(task.cookTime)}</span>
+                  </div>
+                </div>
+                <div className="col-span-2 text-[9px] bg-gray-50 p-2 border border-black/5">
+                  <div className="italic leading-tight">{task.comments || "R.A.S."}</div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </div>
