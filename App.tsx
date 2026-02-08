@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { format, addWeeks, startOfWeek, addDays, setHours, setMinutes, parseISO, startOfDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { PrepTask } from './types';
+import { PrepTask } from './types.ts';
+import { STAFF_LIST } from './constants.ts';
 import WeeklyCalendar from './components/WeeklyCalendar';
 import TaskModal from './components/TaskModal';
 import PrintLayout from './components/PrintLayout';
-import { STAFF_LIST } from './constants';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -30,21 +30,20 @@ const App: React.FC = () => {
     localStorage.setItem('cuisine_tasks', JSON.stringify(tasks));
   }, [tasks]);
 
-  // LOGIQUE DE GÉNÉRATION PDF (SANS WINDOW.PRINT)
   const handleDownloadPDF = async () => {
     if (!printRef.current) return;
     setIsGenerating(true);
 
     try {
       const element = printRef.current;
-      // On force temporairement l'élément à être visible pour la capture
+      // On rend l'élément visible le temps de la capture
       element.style.display = 'block';
       
       const canvas = await html2canvas(element, {
-        scale: 2, // Haute qualité
+        scale: 2,
         useCORS: true,
         logging: false,
-        width: 1122, // Largeur A4 Paysage en pixels approx
+        width: 1122, // Largeur A4 Paysage
       });
 
       const imgData = canvas.toDataURL('image/jpeg', 1.0);
@@ -54,15 +53,11 @@ const App: React.FC = () => {
         format: 'a4'
       });
 
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-      pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Planning_${format(currentWeekStart, 'yyyy-MM-dd')}.pdf`);
+      pdf.addImage(imgData, 'JPEG', 0, 0, 297, 210);
+      pdf.save(`Planning_Cuisine_${format(currentWeekStart, 'yyyy-MM-dd')}.pdf`);
       
     } catch (error) {
-      console.error("Erreur génération PDF:", error);
+      console.error(error);
       alert("Erreur lors de la création du PDF");
     } finally {
       if (printRef.current) printRef.current.style.display = 'none';
@@ -71,19 +66,20 @@ const App: React.FC = () => {
   };
 
   const tasksForCurrentWeek = tasks.filter(t => {
-    const tDate = typeof t.startTime === 'string' ? parseISO(t.startTime) : t.startTime;
-    const weekDays = Array.from({ length: 7 }, (_, i) => format(addDays(currentWeekStart, i), 'yyyy-MM-dd'));
-    return weekDays.includes(format(tDate, 'yyyy-MM-dd'));
+    const tDate = parseISO(t.startTime);
+    const start = currentWeekStart;
+    const end = addDays(currentWeekStart, 7);
+    return tDate >= start && tDate < end;
   });
 
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
       <header className="bg-white p-4 shadow-sm sticky top-0 z-50">
-        <h1 className="font-black text-blue-600 text-center text-lg">CUISINE PLANNER</h1>
-        <div className="flex bg-gray-100 p-1 rounded-xl mt-3">
-          <button onClick={() => setWeekOffset(v => v - 1)} className="flex-1 font-bold">‹</button>
-          <span className="flex-[4] text-center text-xs font-black uppercase self-center">{weekLabel}</span>
-          <button onClick={() => setWeekOffset(v => v + 1)} className="flex-1 font-bold">›</button>
+        <h1 className="font-black text-blue-600 text-center uppercase tracking-tighter">Cuisine Planner</h1>
+        <div className="flex bg-gray-100 p-1 rounded-xl mt-3 border">
+          <button onClick={() => setWeekOffset(v => v - 1)} className="flex-1 font-bold py-1">‹</button>
+          <span className="flex-[4] text-center text-[10px] font-black uppercase self-center">{weekLabel}</span>
+          <button onClick={() => setWeekOffset(v => v + 1)} className="flex-1 font-bold py-1">›</button>
         </div>
       </header>
 
@@ -93,43 +89,57 @@ const App: React.FC = () => {
           weekStartDate={currentWeekStart}
           onAddTask={(day, shift) => {
             const date = setMinutes(setHours(addDays(currentWeekStart, day), 8), 0);
-            setEditingTask({ id: crypto.randomUUID(), startTime: format(date, "yyyy-MM-dd'T'HH:mm"), shift, responsible: STAFF_LIST[0], name: '', prepTime: 15, cookTime: 60, shelfLifeDays: 3 } as PrepTask);
+            setEditingTask({
+              id: crypto.randomUUID(),
+              name: '',
+              responsible: STAFF_LIST[0],
+              prepTime: 15,
+              cookTime: 60,
+              packingTime: 10,
+              shelfLifeDays: 3,
+              startTime: date.toISOString(),
+              dayOfWeek: day,
+              shift: shift,
+              color: 'bg-blue-100',
+              comments: ''
+            });
             setIsModalOpen(true);
           }}
           onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
         />
       </main>
 
-      {/* BOUTON EXPORTER PDF */}
       <div className="fixed bottom-6 left-0 right-0 px-4 z-40 flex justify-center">
         <button 
           onClick={handleDownloadPDF} 
           disabled={isGenerating}
-          className="w-full max-w-xs bg-black text-white py-4 rounded-2xl font-black uppercase shadow-2xl disabled:opacity-50"
+          className="w-full max-w-xs bg-black text-white py-4 rounded-2xl font-black uppercase shadow-2xl disabled:opacity-50 active:scale-95 transition-transform"
         >
-          {isGenerating ? "⏳ Création..." : "📄 Exporter PDF"}
+          {isGenerating ? "⏳ Création du PDF..." : "📄 Exporter PDF"}
         </button>
       </div>
 
-      {/* ZONE CACHÉE POUR LA CAPTURE PDF */}
-      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
-        <div ref={printRef} style={{ width: '297mm', background: 'white', display: 'none' }}>
+      {/* ZONE INVISIBLE POUR LA CAPTURE */}
+      <div style={{ position: 'absolute', left: '-10000px', top: 0 }}>
+        <div ref={printRef} style={{ display: 'none' }}>
           <PrintLayout tasks={tasksForCurrentWeek} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
         </div>
       </div>
 
-      <TaskModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSave={(task) => {
-          setTasks(prev => {
-            const exists = prev.find(t => t.id === task.id);
-            return exists ? prev.map(t => t.id === task.id ? task : t) : [...prev, task];
-          });
-          setIsModalOpen(false);
-        }} 
-        initialTask={editingTask} 
-      />
+      {isModalOpen && (
+        <TaskModal 
+          isOpen={isModalOpen} 
+          onClose={() => setIsModalOpen(false)} 
+          initialTask={editingTask}
+          onSave={(task) => {
+            setTasks(prev => {
+              const exists = prev.find(t => t.id === task.id);
+              return exists ? prev.map(t => t.id === task.id ? task : t) : [...prev, task];
+            });
+            setIsModalOpen(false);
+          }} 
+        />
+      )}
     </div>
   );
 };
