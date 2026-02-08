@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { format, addWeeks, startOfWeek, addDays, setHours, setMinutes, startOfDay, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import jsPDF from 'jspdf';
+import jsPDF from 'jsPDF';
 import html2canvas from 'html2canvas';
 
 // Imports types, constantes et services
@@ -148,43 +148,37 @@ const App: React.FC = () => {
               </button>
             </div>
 
-            {/* ACTION BAR : Boutons compacts */}
-            <div className="grid grid-cols-3 md:flex items-center gap-2 w-full md:w-auto">
+            {/* ACTION BAR : Uniquement PDF encadré, les autres sont juste des icônes */}
+            <div className="flex items-center justify-end gap-4 w-full md:w-auto">
               
-              {/* BOUTON PDF */}
+              {/* BOUTON PDF (Le seul avec encadré) */}
               <button 
                 onClick={handleDownloadPDF} 
                 disabled={isGeneratingPdf}
-                className="flex flex-col md:flex-row items-center justify-center gap-1 bg-red-600 hover:bg-red-700 text-white py-2 md:px-4 md:py-2 rounded-xl shadow-md transition-all active:scale-95 border-b-4 border-red-800 disabled:opacity-50"
+                className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl shadow-md transition-all active:scale-95 border-b-4 border-red-800 disabled:opacity-50"
               >
                 <span className="text-sm">{isGeneratingPdf ? '⏳' : '📄'}</span>
-                <span className="font-black text-[7px] md:text-[10px] uppercase tracking-tighter md:tracking-wider">
-                  {isGeneratingPdf ? 'Wait' : 'PDF'}
+                <span className="font-black text-[10px] uppercase tracking-wider">
+                  {isGeneratingPdf ? 'Attente' : 'PDF'}
                 </span>
               </button>
 
-              {/* BOUTON ALERTES (Réduit) */}
+              {/* ICONE ALERTE (Sans encadré) */}
               <button 
                 onClick={handleToggleAlerts} 
-                className={`flex flex-col md:flex-row items-center justify-center gap-1 md:w-10 md:h-10 py-2 rounded-xl border-2 transition-all shadow-md active:scale-95 ${
-                  isAlertsEnabled 
-                    ? 'bg-emerald-500 border-emerald-400 text-white' 
-                    : 'bg-white border-slate-200 text-slate-400'
-                }`}
+                className={`text-xl transition-all active:scale-90 ${isAlertsEnabled ? 'grayscale-0' : 'grayscale opacity-30'}`}
+                title="Alertes"
               >
-                <span className="text-sm">{isAlertsEnabled ? '🔔' : '🔕'}</span>
-                <span className="md:hidden font-black text-[7px] uppercase tracking-tighter">
-                  {isAlertsEnabled ? 'Actif' : 'Off'}
-                </span>
+                {isAlertsEnabled ? '🔔' : '🔕'}
               </button>
 
-              {/* BOUTON PARAMÈTRES */}
+              {/* ICONE PARAMÈTRES (Sans encadré) */}
               <button 
                 onClick={() => setIsSettingsOpen(true)} 
-                className="flex flex-col md:flex-row items-center justify-center gap-1 py-2 md:w-10 md:h-10 rounded-xl border-2 bg-white border-slate-200 text-slate-700 shadow-sm active:scale-95"
+                className="text-xl transition-all active:scale-90 hover:rotate-45"
+                title="Paramètres"
               >
-                <span className="text-sm md:text-xl">⚙️</span>
-                <span className="md:hidden font-black text-[7px] uppercase tracking-tighter text-slate-500">Config</span>
+                ⚙️
               </button>
 
             </div>
