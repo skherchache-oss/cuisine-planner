@@ -14,101 +14,43 @@ interface PrintLayoutProps {
 const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDate }) => {
   const weekDates = Array.from({ length: 5 }, (_, i) => addDays(weekStartDate, i));
 
-  // Contenu d'une carte de tâche (réutilisé pour éviter la duplication)
-  const TaskCard = ({ task }: { task: PrepTask }) => {
-    const expiry = calculateExpiry(task.startTime, task.cookTime, task.shelfLifeDays);
-    return (
-      <div className="border border-slate-300 p-3 rounded-lg bg-white shadow-sm flex flex-col gap-1 mb-2">
-        <div className="flex justify-between items-center border-b border-slate-100 pb-2 mb-1">
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black bg-slate-900 text-white px-2 py-0.5 rounded w-fit">
-              {format(parseISO(task.startTime), 'HH:mm')}
-            </span>
-            <span className="text-[9px] font-bold text-rose-600 mt-1">
-              DLC: {format(expiry, 'dd/MM HH:mm')}
-            </span>
-          </div>
-          <span className="font-black uppercase text-xs text-slate-900 text-right flex-1 ml-4">
-            {task.name}
-          </span>
-        </div>
-
-        <div className="flex justify-between text-[10px] font-bold text-slate-600">
-          <span>👤 {task.responsible}</span>
-          <span>⏱️ {task.cookTime} min</span>
-        </div>
-
-        {task.comments && (
-          <div className="mt-2 text-[10px] text-slate-700 italic border-l-4 border-blue-500 pl-2 py-1 bg-blue-50/50 rounded-r">
-            <strong>Notes:</strong> {task.comments}
-          </div>
-        )}
-
-        <div className="mt-3 pt-2 border-t border-dashed border-slate-200 flex justify-between gap-4">
-          <div className="flex-1 border-b-2 border-slate-200 h-6 flex items-end">
-            <span className="text-[8px] text-slate-400 font-bold uppercase">N° Lot</span>
-          </div>
-          <div className="w-16 border-b-2 border-slate-200 h-6 flex items-end justify-center">
-            <span className="text-[8px] text-slate-400 font-bold uppercase">T° Cœur</span>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <div className="w-full bg-white">
-      {/* 1. VUE MOBILE : S'affiche uniquement sur petit écran (cards) */}
-      <div className="block md:hidden p-4">
-        <h1 className="text-xl font-black text-slate-900 mb-1">BISTROT M</h1>
-        <p className="text-xs font-bold text-slate-500 mb-4 uppercase">{weekLabel}</p>
-        
-        {weekDates.map((date) => (
-          <div key={date.toString()} className="mb-8">
-            <h2 className="bg-slate-900 text-white p-2 rounded-t-lg font-black uppercase text-sm">
-              {format(date, 'EEEE dd MMMM', { locale: fr })}
-            </h2>
-            <div className="border-2 border-t-0 border-slate-900 rounded-b-lg p-2 bg-slate-50">
-              {SHIFTS.map(shift => {
-                const dayTasks = tasks.filter(t => 
-                  t.shift === shift.id && isSameDay(parseISO(t.startTime), date)
-                );
-                if (dayTasks.length === 0) return null;
-                return (
-                  <div key={shift.id} className="mt-2">
-                    <div className="text-[10px] font-black text-slate-400 uppercase mb-2 flex items-center gap-2">
-                      {shift.icon} {shift.label}
-                    </div>
-                    {dayTasks.map(task => <TaskCard key={task.id} task={task} />)}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* 2. VUE TABLEAU (PDF & DESKTOP) : Cachée sur mobile mais utilisée pour l'export */}
+    <div className="w-full bg-slate-50 min-h-screen p-2 md:p-0">
+      {/* CONTENEUR PRINCIPAL (Optimisé pour html2canvas / PDF) */}
       <div 
         id="print-area" 
-        className="hidden md:block" 
-        style={{ width: '287mm', padding: '10mm', margin: '0 auto' }}
+        className="bg-white mx-auto shadow-none"
+        style={{ 
+          width: '297mm', // Format A4 Paysage strict
+          minHeight: '210mm',
+          padding: '12mm',
+          boxSizing: 'border-box',
+          color: 'black'
+        }}
       >
-        <div className="flex justify-between items-end mb-4 border-b-2 border-slate-900 pb-2">
-          <h1 className="text-2xl font-black text-slate-900 uppercase">BISTROT M</h1>
-          <div className="bg-slate-900 text-white px-4 py-1.5 rounded font-black text-sm uppercase">
-            {weekLabel}
+        {/* HEADER BISTROT M */}
+        <div className="flex justify-between items-center mb-6 border-b-4 border-slate-900 pb-4">
+          <div>
+            <h1 className="text-3xl font-black tracking-tighter text-slate-900">BISTROT M</h1>
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.4em]">Registre de Production • HACCP</p>
+          </div>
+          <div className="text-right">
+            <div className="bg-slate-900 text-white px-5 py-2 rounded-md font-black text-sm uppercase">
+              {weekLabel}
+            </div>
+            <p className="text-[9px] text-slate-400 mt-2 italic">Document généré le {format(new Date(), 'dd/MM/yyyy à HH:mm')}</p>
           </div>
         </div>
 
+        {/* TABLEAU DE PRODUCTION */}
         <table className="w-full border-collapse border-2 border-slate-900 table-fixed">
           <thead>
             <tr className="bg-slate-100">
-              <th className="border border-slate-400 w-[60px] p-2 text-[10px] font-black uppercase">Shift</th>
+              <th className="border-2 border-slate-900 w-[70px] p-2 text-[10px] font-black uppercase">Shift</th>
               {weekDates.map(date => (
-                <th key={date.toString()} className="border border-slate-400 p-2 text-center uppercase">
-                  <div className="text-sm font-black">{format(date, 'EEEE', { locale: fr })}</div>
-                  <div className="text-[10px] text-slate-500">{format(date, 'dd/MM', { locale: fr })}</div>
+                <th key={date.toString()} className="border-2 border-slate-900 p-2 text-center">
+                  <div className="text-sm font-black uppercase">{format(date, 'EEEE', { locale: fr })}</div>
+                  <div className="text-[11px] text-slate-500 font-bold">{format(date, 'dd/MM', { locale: fr })}</div>
                 </th>
               ))}
             </tr>
@@ -116,24 +58,92 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ tasks, weekLabel, weekStartDa
           <tbody>
             {SHIFTS.map(shift => (
               <tr key={shift.id}>
-                <td className="border border-slate-400 bg-slate-50 p-2 text-center align-middle">
-                  <div className="text-xl">{shift.icon}</div>
-                  <div className="text-[8px] font-bold text-slate-500 uppercase">{shift.label}</div>
+                {/* Colonne latérale Shift */}
+                <td className="border-2 border-slate-900 bg-slate-50 p-2 text-center align-middle">
+                  <div className="text-2xl mb-1">{shift.icon}</div>
+                  <div className="text-[8px] font-black uppercase text-slate-700 leading-none">{shift.label}</div>
                 </td>
-                {weekDates.map((date, idx) => (
-                  <td key={idx} className="border border-slate-300 p-2 align-top bg-white min-h-[150px]">
-                    {tasks
-                      .filter(t => t.shift === shift.id && isSameDay(parseISO(t.startTime), date))
-                      .map(task => <TaskCard key={task.id} task={task} />)}
-                  </td>
-                ))}
+
+                {/* Cellules des tâches */}
+                {weekDates.map((date, dayIdx) => {
+                  const dayTasks = tasks.filter(t => 
+                    t.shift === shift.id && isSameDay(parseISO(t.startTime), date)
+                  ).sort((a, b) => a.startTime.localeCompare(b.startTime));
+                  
+                  return (
+                    <td key={dayIdx} className="border border-slate-400 p-2 align-top bg-white">
+                      <div className="flex flex-col gap-3">
+                        {dayTasks.map(task => {
+                          const expiry = calculateExpiry(task.startTime, task.cookTime, task.shelfLifeDays);
+                          return (
+                            <div 
+                              key={task.id} 
+                              className="flex flex-col border border-slate-300 rounded-md p-2 bg-white"
+                              style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }} // Empêche la coupure en milieu de fiche
+                            >
+                              {/* 1. LIGNE TITRE : HEURE + NOM */}
+                              <div className="flex items-start gap-2 border-b border-slate-100 pb-1.5 mb-1.5">
+                                <span className="text-[10px] font-black bg-slate-900 text-white px-1.5 py-0.5 rounded shrink-0">
+                                  {format(parseISO(task.startTime), 'HH:mm')}
+                                </span>
+                                <span className="text-[10px] font-black uppercase text-slate-900 leading-tight">
+                                  {task.name}
+                                </span>
+                              </div>
+
+                              {/* 2. RESPONSABLE ET TEMPS */}
+                              <div className="flex justify-between text-[9px] font-bold text-slate-600 mb-1">
+                                <span>Chef: {task.responsible}</span>
+                                <span className="text-slate-900">⏱ {task.cookTime} min</span>
+                              </div>
+
+                              {/* 3. NOTES ET INSTRUCTIONS (Pleine largeur, non rogné) */}
+                              {task.comments && (
+                                <div className="text-[8px] text-slate-700 leading-tight italic bg-slate-50 p-1.5 rounded mb-1 border-l-2 border-slate-300">
+                                  {task.comments}
+                                </div>
+                              )}
+
+                              {/* 4. DLC (Simple et propre) */}
+                              <div className="text-[8px] font-bold text-rose-700 mb-2">
+                                DLC: {format(expiry, 'dd/MM HH:mm')}
+                              </div>
+
+                              {/* 5. ZONE DE SAISIE MANUELLE */}
+                              <div className="flex justify-between items-end gap-2 mt-auto">
+                                <div className="flex-1 border-b-2 border-slate-200 h-4 flex items-center">
+                                  <span className="text-[6px] text-slate-400 font-bold uppercase">N° Lot / Notes</span>
+                                </div>
+                                <div className="w-12 border-b-2 border-slate-200 h-4 flex items-center justify-center">
+                                  <span className="text-[6px] text-slate-400 font-bold uppercase text-center">T° Coeur</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
         </table>
-        
-        <div className="mt-4 text-[9px] font-black text-slate-900 uppercase">
-          ⚠️ CONTRÔLE CRITIQUE : TEMPÉRATURES ET DLC OBLIGATOIRES.
+
+        {/* FOOTER HACCP */}
+        <div className="mt-6 border-t-2 border-slate-900 pt-4">
+          <div className="flex justify-between items-start">
+            <div className="max-w-[70%]">
+              <h4 className="text-[10px] font-black uppercase text-slate-900 mb-1">⚠️ Contrôles Critiques Obligatoires</h4>
+              <p className="text-[9px] font-bold text-slate-500 leading-snug">
+                VÉRIFICATION DES TEMPÉRATURES DE CUISSON ET REFROIDISSEMENT. CONTRÔLE VISUEL DE L'ÉTANCHÉITÉ ET DE L'ÉTIQUETAGE DLC. 
+                TOUTE ANOMALIE DOIT ÊTRE SIGNALÉE AU CHEF DE CUISINE.
+              </p>
+            </div>
+            <div className="text-right border-b-2 border-slate-300 w-48 pb-6">
+              <span className="text-[9px] font-black text-slate-400 uppercase">Visa Responsable</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
