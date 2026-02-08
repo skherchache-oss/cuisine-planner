@@ -28,8 +28,9 @@ const App: React.FC = () => {
   const printRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Calcul du lundi de la semaine sélectionnée
   const currentWeekStart = startOfDay(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }));
-  const currentWeekEnd = addDays(currentWeekStart, 4);
+  const currentWeekEnd = addDays(currentWeekStart, 4); // Vendredi
   const weekLabel = `${format(currentWeekStart, 'dd MMM', { locale: fr })} - ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
 
   useEffect(() => {
@@ -89,24 +90,52 @@ const App: React.FC = () => {
     setIsModalOpen(false);
   };
 
+  const handleDuplicateTask = (task: PrepTask) => {
+    const newTask = { ...task, id: crypto.randomUUID(), name: `${task.name} (Copie)` };
+    setTasks(prev => [...prev, newTask]);
+  };
+
   const handleMoveTask = (taskId: string, newDate: Date, newShift: ShiftType) => {
     setTasks(prev => prev.map(task => {
       if (task.id === taskId) {
         const oldStart = parseISO(task.startTime);
         const updatedStart = setMinutes(setHours(newDate, oldStart.getHours()), oldStart.getMinutes());
-        return { ...task, startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"), shift: newShift, dayOfWeek: (updatedStart.getDay() + 6) % 7 };
+        return { 
+          ...task, 
+          startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"), 
+          shift: newShift, 
+          dayOfWeek: (updatedStart.getDay() + 6) % 7 
+        };
       }
       return task;
     }));
   };
 
+  // --- GESTION IMPORT / EXPORT ---
   const handleExportData = () => {
     const dataBlob = new Blob([JSON.stringify(tasks, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `backup_cuisine.json`;
+    link.download = `backup_cuisine_${format(new Date(), 'dd-MM-yyyy')}.json`;
     link.click();
+    setIsSettingsOpen(false);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target?.result as string);
+        if (Array.isArray(imported)) {
+          setTasks(imported);
+          alert("Importation réussie !");
+        }
+      } catch (err) { alert("Fichier invalide"); }
+    };
+    reader.readAsText(file);
     setIsSettingsOpen(false);
   };
 
@@ -132,7 +161,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 overflow-x-hidden flex flex-col">
-      {/* Top Brand Bar */}
       <div className="no-print bg-gray-900 text-white py-1.5 px-4 flex justify-between items-center text-[8px] font-black uppercase border-b border-gray-800">
         <span className="tracking-[0.4em]">BISTROT M</span>
         <span className="tracking-[0.4em] opacity-40">PRODUCTION SYSTEM v2.5</span>
@@ -140,15 +168,11 @@ const App: React.FC = () => {
 
       <header className="no-print bg-white border-b shadow-sm sticky top-0 z-[60]">
         <div className="max-w-7xl mx-auto px-2 h-14 flex items-center justify-between gap-1">
-          {/* Logo & Titre (Compact sur mobile) */}
           <div className="flex items-center gap-2 shrink-0">
             <div className="bg-blue-600 w-8 h-8 flex items-center justify-center rounded-lg text-white font-black text-lg shadow-md">🍽️</div>
-            <h1 className="font-black text-gray-900 text-xs sm:text-base tracking-tight uppercase leading-none">
-              CUISINE PLANNER
-            </h1>
+            <h1 className="font-black text-gray-900 text-xs sm:text-base tracking-tight uppercase leading-none">PLANNER</h1>
           </div>
 
-          {/* Navigation & Contrôles */}
           <div className="flex items-center gap-1 sm:gap-3 flex-1 justify-end">
             <div className="flex items-center bg-gray-100 rounded-xl p-0.5">
               <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-7 h-7 hover:bg-white rounded-lg font-black text-sm">‹</button>
@@ -166,24 +190,14 @@ const App: React.FC = () => {
             </button>
             
             <div className="relative">
-              <button 
-                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                className={`w-8 h-8 flex items-center justify-center rounded-xl border transition-all ${isSettingsOpen ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-              >
+              <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className={`w-8 h-8 flex items-center justify-center rounded-xl border transition-all ${isSettingsOpen ? 'bg-gray-900 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
                 <span className="text-sm">⚙️</span>
               </button>
-
               {isSettingsOpen && (
                 <div className="absolute top-full right-0 mt-2 w-44 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-[70]">
-                  <button onClick={handleExportData} className="w-full text-left px-4 py-2 text-[10px] font-black text-gray-700 hover:bg-blue-50 flex items-center gap-3 uppercase">
-                    <span>📤</span> Exporter
-                  </button>
-                  <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-4 py-2 text-[10px] font-black text-gray-700 hover:bg-blue-50 flex items-center gap-3 uppercase">
-                    <span>📥</span> Importer
-                  </button>
-                  <button onClick={() => { if(confirm("Reset ?")) setTasks([]); setIsSettingsOpen(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black text-red-600 hover:bg-red-50 flex items-center gap-3 uppercase">
-                    <span>🗑️</span> Reset
-                  </button>
+                  <button onClick={handleExportData} className="w-full text-left px-4 py-2 text-[10px] font-black text-gray-700 hover:bg-blue-50 flex items-center gap-3 uppercase"><span>📤</span> Exporter</button>
+                  <button onClick={() => fileInputRef.current?.click()} className="w-full text-left px-4 py-2 text-[10px] font-black text-gray-700 hover:bg-blue-50 flex items-center gap-3 uppercase"><span>📥</span> Importer</button>
+                  <button onClick={() => { if(confirm("Vider toutes les tâches ?")) setTasks([]); setIsSettingsOpen(false); }} className="w-full text-left px-4 py-2 text-[10px] font-black text-red-600 hover:bg-red-50 flex items-center gap-3 uppercase"><span>🗑️</span> Reset</button>
                 </div>
               )}
             </div>
@@ -192,7 +206,6 @@ const App: React.FC = () => {
         <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
       </header>
 
-      {/* Main Content - No Scroll Horizontal */}
       <main className="no-print w-full max-w-7xl mx-auto px-1 sm:px-4 mt-4 flex-1">
         <div className="w-full overflow-hidden">
           <WeeklyCalendar 
@@ -201,26 +214,22 @@ const App: React.FC = () => {
             onAddTask={handleAddTask}
             onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
             onDeleteTask={(id) => setTasks(prev => prev.filter(t => t.id !== id))}
+            onDuplicateTask={handleDuplicateTask}
             onMoveTask={handleMoveTask}
             weekStartDate={currentWeekStart}
           />
         </div>
         
-        {/* Moniteur Mobile friendly */}
         {activeAlerts.length > 0 && (
           <div className="mt-8 px-2">
-            <h3 className="text-[10px] font-black text-gray-400 mb-3 flex items-center gap-2 uppercase tracking-[0.2em]">
-              <span className="w-6 h-px bg-gray-200"></span> MONITOR <span className="w-6 h-px bg-gray-200"></span>
-            </h3>
+            <h3 className="text-[10px] font-black text-gray-400 mb-3 flex items-center gap-2 uppercase tracking-[0.2em]">MONITOR</h3>
             <div className="flex flex-col gap-2">
               {activeAlerts.map(alertTask => (
                 <div key={alertTask.id} className={`p-3 rounded-2xl border flex items-center gap-3 bg-white ${alertTask.status === 'ongoing' ? 'border-orange-200' : 'border-blue-100'}`}>
                   <span className="text-xl">{alertTask.status === 'ongoing' ? '🔥' : '🕒'}</span>
                   <div className="flex-1">
                     <div className="font-black text-[11px] uppercase truncate">{alertTask.name}</div>
-                    <div className="text-[9px] font-bold text-gray-400 uppercase">
-                      {Math.floor(alertTask.remainingSeconds / 60)} min restantes
-                    </div>
+                    <div className="text-[9px] font-bold text-gray-400 uppercase">{Math.floor(alertTask.remainingSeconds / 60)} min restantes</div>
                   </div>
                 </div>
               ))}
@@ -229,30 +238,17 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* FAB Floating Action Button */}
-      <div className="fixed bottom-4 right-4 z-40 no-print flex flex-col gap-2">
-        <button 
-          onClick={handleDownloadPDF}
-          disabled={isGeneratingPdf}
-          className="bg-gray-900 text-white p-4 rounded-full shadow-2xl transition-all active:scale-95 disabled:opacity-50 border border-white/20"
-        >
+      <div className="fixed bottom-4 right-4 z-40 no-print">
+        <button onClick={handleDownloadPDF} disabled={isGeneratingPdf} className="bg-gray-900 text-white p-4 rounded-full shadow-2xl transition-all active:scale-95 disabled:opacity-50 border border-white/20">
           {isGeneratingPdf ? '⏳' : <span className="font-black text-[10px]">PDF</span>}
         </button>
       </div>
 
-      {/* Hidden Print Area */}
       <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '297mm' }}>
-        <div ref={printRef}>
-          <PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
-        </div>
+        <div ref={printRef}><PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} /></div>
       </div>
 
-      <TaskModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveTask}
-        initialTask={editingTask || modalInitialData}
-      />
+      <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveTask} initialTask={editingTask || modalInitialData} />
     </div>
   );
 };
