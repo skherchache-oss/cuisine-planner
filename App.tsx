@@ -124,57 +124,55 @@ const App: React.FC = () => {
   };
 
   return (
-    /* Arrière-plan sombre fixe */
-    <div className="min-h-screen bg-[#0F172A] md:p-8 flex items-center justify-center font-sans">
+    /* MODIFICATION : items-start sur mobile pour coller le calendrier en haut */
+    <div className="min-h-screen bg-[#0F172A] md:p-8 flex items-start md:items-center justify-center font-sans">
       
-      {/* Container de l'App - Sur mobile, on utilise h-screen, sur PC h-[92vh] */}
-      <div className="w-full max-w-[1400px] bg-[#F8FAFC] flex flex-col md:rounded-[2.5rem] md:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] md:border border-slate-700 h-screen md:h-[92vh] overflow-hidden">
+      {/* MODIFICATION : h-auto sur mobile pour ne pas brider le calendrier, overflow-visible */}
+      <div className="w-full max-w-[1400px] bg-[#F8FAFC] flex flex-col md:rounded-[2.5rem] md:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] md:border border-slate-700 min-h-screen md:h-[92vh] overflow-x-hidden">
         
-        {/* Barre supérieure noire (ne pas toucher) */}
-        <div className="bg-[#0F172A] text-white py-1 px-4 flex justify-between items-center shrink-0">
+        {/* Barre noire top (fixe) */}
+        <div className="bg-[#0F172A] text-white py-1 px-4 flex justify-between items-center shrink-0 z-[110]">
           <span className="font-black text-[8px] uppercase tracking-[0.2em]">BISTROT M — Kitchen Manager</span>
           <span className="text-[9px] font-bold">{format(currentTime, 'HH:mm', { locale: fr })}</span>
         </div>
 
-        {/* Header avec Navigation et Actions */}
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-[100] shrink-0">
+        {/* Header sticky (fixe en haut) */}
+        <header className="bg-white border-b border-slate-200 sticky top-0 md:top-[unset] z-[100] shrink-0 shadow-sm">
           <div className="max-w-7xl mx-auto px-2 py-2 md:px-4 md:py-4">
             <div className="flex flex-col-reverse md:flex-row md:items-center justify-between gap-2 md:gap-4">
               
-              {/* Navigation Dates */}
+              {/* Navigation Semaine */}
               <div className="flex items-center bg-slate-900 rounded-xl p-0.5 shadow-md w-full md:w-auto">
-                <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center text-white active:scale-90">
+                <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center text-white">
                   <span className="text-lg font-bold">‹</span>
                 </button>
                 <div className="flex-1 px-1 text-center">
                   <h1 className="text-white font-black text-[9px] md:text-xs uppercase tracking-tight">{weekLabel}</h1>
                 </div>
-                <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center text-white active:scale-90">
+                <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center text-white">
                   <span className="text-lg font-bold">›</span>
                 </button>
               </div>
 
-              {/* Barre d'outils */}
-              <div className="flex items-center justify-end gap-4 w-full md:w-auto">
-                <button onClick={() => setIsSettingsOpen(true)} className="text-xl md:text-2xl transition-all active:scale-90">⚙️</button>
-                <button onClick={handleToggleAlerts} className={`text-xl md:text-2xl transition-all active:scale-90 ${isAlertsEnabled ? 'grayscale-0' : 'grayscale opacity-30'}`}>{isAlertsEnabled ? '🔔' : '🔕'}</button>
+              {/* Barre boutons */}
+              <div className="flex items-center justify-end gap-4 w-full md:w-auto px-1">
+                <button onClick={() => setIsSettingsOpen(true)} className="text-xl md:text-2xl">⚙️</button>
+                <button onClick={handleToggleAlerts} className={`text-xl md:text-2xl ${isAlertsEnabled ? '' : 'grayscale opacity-30'}`}>{isAlertsEnabled ? '🔔' : '🔕'}</button>
                 <button 
                   onClick={handleDownloadPDF} 
-                  disabled={isGeneratingPdf}
-                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg shadow-md flex items-center gap-2 border-b-2 border-red-800 disabled:opacity-50"
+                  className="bg-red-600 text-white px-3 py-1.5 rounded-lg shadow-md flex items-center gap-2 border-b-2 border-red-800"
                 >
                   <span className="text-xs">📄</span>
-                  <span className="font-black text-[9px] uppercase">{isGeneratingPdf ? '...' : 'PDF'}</span>
+                  <span className="font-black text-[9px] uppercase">PDF</span>
                 </button>
               </div>
             </div>
           </div>
         </header>
 
-        {/* ZONE CALENDRIER : Correction ici pour remonter le tout */}
-        <main className="flex-1 overflow-y-auto w-full">
-          {/* Un container interne avec un padding minimal en haut pour remonter le calendrier */}
-          <div className="max-w-7xl mx-auto px-1 md:px-4 pt-1 pb-10 md:pt-4">
+        {/* ZONE CALENDRIER : Scrollable et commence immédiatement sous le header */}
+        <main className="flex-1 w-full overflow-y-auto bg-white">
+          <div className="max-w-7xl mx-auto">
             <WeeklyCalendar 
               tasks={tasks} currentTime={currentTime}
               onAddTask={(idx, shift) => {
@@ -201,10 +199,12 @@ const App: React.FC = () => {
               weekStartDate={currentWeekStart}
             />
           </div>
+          {/* Espace de sécurité en bas pour le scroll mobile */}
+          <div className="h-20 md:hidden"></div>
         </main>
       </div>
 
-      {/* PDF HIDDEN LAYER */}
+      {/* PDF HIDDEN */}
       <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
         <div ref={printRef} style={{ width: '287mm', backgroundColor: 'white' }}>
           <PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
@@ -218,14 +218,11 @@ const App: React.FC = () => {
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border-4 border-slate-900">
             <h2 className="text-xl font-black mb-6 uppercase italic">Configuration</h2>
             <div className="space-y-3 mb-6">
-              <button onClick={handleExportJSON} className="w-full py-3 bg-blue-50 text-blue-700 rounded-xl font-black text-xs uppercase tracking-widest border-2 border-blue-200 transition-all">📤 Sauvegarde JSON</button>
-              <button onClick={() => fileInputRef.current?.click()} className="w-full py-3 bg-slate-50 text-slate-700 rounded-xl font-black text-xs uppercase tracking-widest border-2 border-slate-200 transition-all">📥 Restaurer JSON</button>
+              <button onClick={handleExportJSON} className="w-full py-3 bg-blue-50 text-blue-700 rounded-xl font-black text-xs uppercase border-2 border-blue-200">📤 Sauvegarde JSON</button>
+              <button onClick={() => fileInputRef.current?.click()} className="w-full py-3 bg-slate-50 text-slate-700 rounded-xl font-black text-xs uppercase border-2 border-slate-200">📥 Restaurer JSON</button>
               <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />
             </div>
-            <div className="border-t-2 border-slate-100 pt-6 space-y-3">
-              <button onClick={() => { if(confirm('Tout effacer ?')) { localStorage.clear(); window.location.reload(); } }} className="w-full py-3 bg-red-100 text-red-600 rounded-xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">⚠️ Reset Global</button>
-              <button onClick={() => setIsSettingsOpen(false)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all">Fermer</button>
-            </div>
+            <button onClick={() => setIsSettingsOpen(false)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase">Fermer</button>
           </div>
         </div>
       )}
