@@ -33,7 +33,6 @@ const App: React.FC = () => {
 
   const currentWeekStart = startOfDay(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }));
   const currentWeekEnd = addDays(currentWeekStart, 4);
-  const weekDates = Array.from({ length: 5 }, (_, i) => addDays(currentWeekStart, i));
   
   const weekLabel = `Semaine du ${format(currentWeekStart, 'dd MMM', { locale: fr })} au ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
 
@@ -61,12 +60,31 @@ const App: React.FC = () => {
     e.preventDefault();
     if (!isAlertsEnabled) {
       const permission = await requestNotificationPermission();
-      if (permission === 'granted') {
-        setIsAlertsEnabled(true);
-      }
+      if (permission === 'granted') setIsAlertsEnabled(true);
     } else {
       setIsAlertsEnabled(false);
     }
+  };
+
+  const handleExportJSON = () => {
+    const dataStr = JSON.stringify(tasks, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    const link = document.createElement('a');
+    link.setAttribute('href', dataUri);
+    link.setAttribute('download', `sauvegarde-BM-${format(new Date(), 'dd-MM-yy')}.json`);
+    link.click();
+  };
+
+  const handleImportJSON = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const reader = new FileReader();
+    if (!event.target.files?.[0]) return;
+    reader.onload = (e) => {
+      try {
+        const imported = JSON.parse(e.target?.result as string);
+        if (Array.isArray(imported)) { setTasks(imported); setIsSettingsOpen(false); }
+      } catch (err) { alert('Fichier invalide'); }
+    };
+    reader.readAsText(event.target.files[0]);
   };
 
   const handleSaveTask = (task: PrepTask) => {
@@ -96,50 +114,42 @@ const App: React.FC = () => {
       
       <div className="w-full max-w-[1400px] bg-[#F8FAFC] flex flex-col md:rounded-[2.5rem] md:shadow-2xl md:border border-slate-700 min-h-screen md:h-[92vh] overflow-hidden">
         
-        {/* BARRE OUTILS (FIXE) */}
+        {/* BARRE OUTILS (SUPÉRIEURE) */}
         <div className="bg-[#0F172A] text-white py-2 px-4 flex justify-between items-center shrink-0 z-50">
-          <div className="flex gap-5 items-center">
-            <button onClick={() => setIsSettingsOpen(true)} className="text-xl">⚙️</button>
-            <button onClick={handleToggleAlerts} className={`text-xl ${isAlertsEnabled ? '' : 'grayscale opacity-30'}`}>{isAlertsEnabled ? '🔔' : '🔕'}</button>
+          <div className="flex gap-6 items-center">
+            <button onClick={() => setIsSettingsOpen(true)} className="text-xl active:scale-90 transition-transform">⚙️</button>
+            <button onClick={handleToggleAlerts} className={`text-xl active:scale-90 transition-transform ${isAlertsEnabled ? '' : 'grayscale opacity-30'}`}>
+              {isAlertsEnabled ? '🔔' : '🔕'}
+            </button>
           </div>
           <button 
             onClick={handleDownloadPDF} 
             disabled={isGeneratingPdf}
-            className="bg-red-600 text-white px-4 py-1.5 rounded-full font-black text-[10px] uppercase shadow-lg active:scale-95 transition-transform"
+            className="bg-red-600 text-white px-5 py-1.5 rounded-full font-black text-[11px] uppercase shadow-lg active:scale-95 border-b-2 border-red-800"
           >
-            {isGeneratingPdf ? '...' : 'PDF'}
+            {isGeneratingPdf ? 'Génération...' : 'PDF'}
           </button>
         </div>
 
-        {/* HEADER NAVIGATION SEMAINE */}
-        <header className="bg-white border-b border-slate-200 shrink-0 shadow-sm">
-          <div className="px-4 py-3 text-center">
-            <div className="flex items-center justify-between gap-4 max-w-lg mx-auto bg-slate-100 rounded-2xl p-1">
-              <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm active:bg-slate-200">
-                <span className="text-xl font-bold">‹</span>
+        {/* NAVIGATION SEMAINE */}
+        <header className="bg-white border-b-2 border-slate-100 shrink-0 shadow-sm">
+          <div className="px-4 py-4">
+            <div className="flex items-center justify-between gap-3 max-w-xl mx-auto bg-slate-900 rounded-2xl p-1.5 shadow-inner">
+              <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-12 h-12 flex items-center justify-center bg-slate-800 text-white rounded-xl active:bg-slate-700">
+                <span className="text-2xl font-bold">‹</span>
               </button>
-              <h1 className="font-black text-sm md:text-base uppercase tracking-tight text-slate-800">
+              <h1 className="font-black text-xs md:text-lg uppercase tracking-tight text-white text-center flex-1 leading-tight">
                 {weekLabel}
               </h1>
-              <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm active:bg-slate-200">
-                <span className="text-xl font-bold">›</span>
+              <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-12 h-12 flex items-center justify-center bg-slate-800 text-white rounded-xl active:bg-slate-700">
+                <span className="text-2xl font-bold">›</span>
               </button>
-            </div>
-
-            {/* BARRE DES JOURS (LUNDI 9, MARDI 10...) - Petite marge sous la semaine */}
-            <div className="flex justify-between mt-3 gap-1 overflow-x-auto no-scrollbar pb-1">
-              {weekDates.map((date, i) => (
-                <div key={i} className="flex-1 min-w-[65px] bg-slate-50 py-2 rounded-lg border border-slate-100 shadow-sm">
-                  <div className="text-[10px] font-black text-slate-400 uppercase leading-none">{format(date, 'EEEE', { locale: fr })}</div>
-                  <div className="text-sm font-black text-slate-900">{format(date, 'dd')}</div>
-                </div>
-              ))}
             </div>
           </div>
         </header>
 
-        {/* ZONE CALENDRIER - XP FOCUS SUR LES FICHES */}
-        <main className="flex-1 overflow-y-auto bg-white pt-1">
+        {/* ZONE CALENDRIER */}
+        <main className="flex-1 overflow-y-auto bg-white">
           <div className="max-w-7xl mx-auto">
             <WeeklyCalendar 
               tasks={tasks} currentTime={currentTime}
@@ -167,12 +177,10 @@ const App: React.FC = () => {
               weekStartDate={currentWeekStart}
             />
           </div>
-          {/* Marge de fin pour le confort de scroll */}
-          <div className="h-24"></div>
+          <div className="h-32"></div>
         </main>
       </div>
 
-      {/* PDF CACHÉ */}
       <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
         <div ref={printRef}>
           <PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
@@ -181,13 +189,43 @@ const App: React.FC = () => {
 
       <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveTask} initialTask={editingTask || modalInitialData} />
       
+      {/* MODAL PARAMÈTRES (AVEC JSON ET RESET) */}
       {isSettingsOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl">
-            <h2 className="text-xl font-black mb-6 uppercase">Menu</h2>
-            <div className="space-y-3">
-              <button onClick={() => { if(confirm('Tout effacer ?')) { localStorage.clear(); window.location.reload(); } }} className="w-full py-3 bg-red-100 text-red-600 rounded-xl font-black text-xs uppercase">⚠️ Reset Global</button>
-              <button onClick={() => setIsSettingsOpen(false)} className="w-full py-3 bg-slate-900 text-white rounded-xl font-black text-xs uppercase">Fermer</button>
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full shadow-2xl border-2 border-slate-200">
+            <h2 className="text-xl font-black mb-6 uppercase italic text-slate-800 tracking-tight">Configuration</h2>
+            
+            <div className="space-y-3 mb-6">
+              <button 
+                onClick={handleExportJSON} 
+                className="w-full py-4 bg-blue-50 text-blue-700 rounded-2xl font-black text-[10px] uppercase tracking-widest border-2 border-blue-100 active:scale-95 transition-all"
+              >
+                📤 Sauvegarder (JSON)
+              </button>
+              
+              <button 
+                onClick={() => fileInputRef.current?.click()} 
+                className="w-full py-4 bg-slate-50 text-slate-700 rounded-2xl font-black text-[10px] uppercase tracking-widest border-2 border-slate-100 active:scale-95 transition-all"
+              >
+                📥 Restaurer (JSON)
+              </button>
+              <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />
+            </div>
+
+            <div className="border-t-2 border-slate-50 pt-6 space-y-3">
+              <button 
+                onClick={() => { if(confirm('Tout effacer ? Cette action est irréversible.')) { localStorage.clear(); window.location.reload(); } }} 
+                className="w-full py-4 bg-red-100 text-red-600 rounded-2xl font-black text-[10px] uppercase tracking-widest border-2 border-red-200 active:scale-95 transition-all"
+              >
+                ⚠️ Reset Global
+              </button>
+              
+              <button 
+                onClick={() => setIsSettingsOpen(false)} 
+                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+              >
+                Fermer
+              </button>
             </div>
           </div>
         </div>
