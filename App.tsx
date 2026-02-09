@@ -124,94 +124,93 @@ const App: React.FC = () => {
   };
 
   return (
-    /* CONTENEUR GLOBAL SOMBRE (Apparaît sur les côtés sur PC) */
-    <div className="min-h-screen bg-[#0F172A] md:p-4 lg:p-8 flex justify-center">
-      
-      {/* CORPS DE L'APPLI BLANC (Limité en largeur sur PC, plein écran sur Mobile) */}
-      <div className="w-full max-w-[1400px] bg-[#F8FAFC] flex flex-col font-sans overflow-hidden md:rounded-3xl md:shadow-2xl md:border-4 md:border-slate-800">
-        
-        {/* Barre supérieure */}
-        <div className="bg-[#0F172A] text-white py-1 px-4 flex justify-between items-center shrink-0">
-          <span className="font-black text-[8px] uppercase tracking-[0.2em]">BISTROT M — Kitchen Manager</span>
-          <span className="text-[9px] font-bold">{format(currentTime, 'HH:mm', { locale: fr })}</span>
-        </div>
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans overflow-x-hidden">
+      {/* Barre supérieure */}
+      <div className="bg-[#0F172A] text-white py-1 px-4 flex justify-between items-center shrink-0">
+        <span className="font-black text-[8px] uppercase tracking-[0.2em]">BISTROT M — Kitchen Manager</span>
+        <span className="text-[9px] font-bold">{format(currentTime, 'HH:mm', { locale: fr })}</span>
+      </div>
 
-        <header className="bg-white border-b-2 border-slate-200 sticky top-0 z-[100] shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-3 md:py-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
+      <header className="bg-white border-b-2 border-slate-200 sticky top-0 z-[100] shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3 md:py-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
+            
+            {/* NAVIGATION SEMAINE */}
+            <div className="flex items-center bg-slate-900 rounded-2xl p-1 shadow-md w-full md:w-auto">
+              <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
+                <span className="text-xl font-bold">‹</span>
+              </button>
+              <div className="flex-1 px-2 text-center">
+                <h1 className="text-white font-black text-[10px] md:text-xs uppercase tracking-tight">{weekLabel}</h1>
+              </div>
+              <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
+                <span className="text-xl font-bold">›</span>
+              </button>
+            </div>
+
+            {/* ACTION BAR */}
+            <div className="flex items-center justify-end gap-5 w-full md:w-auto">
               
-              {/* NAVIGATION SEMAINE */}
-              <div className="flex items-center bg-slate-900 rounded-2xl p-1 shadow-md w-full md:w-auto">
-                <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
-                  <span className="text-xl font-bold">‹</span>
-                </button>
-                <div className="flex-1 px-2 text-center">
-                  <h1 className="text-white font-black text-[10px] md:text-xs uppercase tracking-tight">{weekLabel}</h1>
-                </div>
-                <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
-                  <span className="text-xl font-bold">›</span>
-                </button>
-              </div>
+              {/* BOUTON PDF */}
+              <button 
+                onClick={handleDownloadPDF} 
+                disabled={isGeneratingPdf}
+                className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl shadow-md transition-all active:scale-95 border-b-4 border-red-800 disabled:opacity-50"
+              >
+                <span className="text-sm">{isGeneratingPdf ? '⏳' : '📄'}</span>
+                <span className="font-black text-[10px] uppercase tracking-wider">
+                  {isGeneratingPdf ? 'Attente' : 'PDF'}
+                </span>
+              </button>
 
-              {/* ACTION BAR */}
-              <div className="flex items-center justify-end gap-5 w-full md:w-auto">
-                <button 
-                  onClick={handleDownloadPDF} 
-                  disabled={isGeneratingPdf}
-                  className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl shadow-md transition-all active:scale-95 border-b-4 border-red-800 disabled:opacity-50"
-                >
-                  <span className="text-sm">{isGeneratingPdf ? '⏳' : '📄'}</span>
-                  <span className="font-black text-[10px] uppercase tracking-wider">
-                    {isGeneratingPdf ? 'Attente' : 'PDF'}
-                  </span>
-                </button>
+              {/* ICONE ALERTE (Juste l'icône) */}
+              <button 
+                onClick={handleToggleAlerts} 
+                className={`text-2xl transition-all active:scale-90 ${isAlertsEnabled ? 'grayscale-0' : 'grayscale opacity-30'}`}
+              >
+                {isAlertsEnabled ? '🔔' : '🔕'}
+              </button>
 
-                <button 
-                  onClick={handleToggleAlerts} 
-                  className={`text-2xl transition-all active:scale-90 ${isAlertsEnabled ? 'grayscale-0' : 'grayscale opacity-30'}`}
-                >
-                  {isAlertsEnabled ? '🔔' : '🔕'}
-                </button>
+              {/* ICONE PARAMÈTRES (Juste l'icône) */}
+              <button 
+                onClick={() => setIsSettingsOpen(true)} 
+                className="text-2xl transition-all active:scale-90 hover:rotate-12 text-slate-700"
+              >
+                ⚙️
+              </button>
 
-                <button 
-                  onClick={() => setIsSettingsOpen(true)} 
-                  className="text-2xl transition-all active:scale-90 hover:rotate-12 text-slate-700"
-                >
-                  ⚙️
-                </button>
-              </div>
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <main className="w-full max-w-7xl mx-auto px-2 md:px-4 py-4 md:py-6 flex-1 overflow-y-auto">
-          <WeeklyCalendar 
-            tasks={tasks} currentTime={currentTime}
-            onAddTask={(idx, shift) => {
-              const dayDate = addDays(currentWeekStart, idx);
-              setModalInitialData({ 
-                dayOfWeek: idx, shift, responsible: STAFF_LIST[0], prepTime: 15, cookTime: 60,
-                startTime: format(setMinutes(setHours(dayDate, 8), 0), "yyyy-MM-dd'T'HH:mm")
-              });
-              setEditingTask(undefined); setIsModalOpen(true);
-            }}
-            onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
-            onDeleteTask={(id) => setTasks(prev => prev.filter(t => t.id !== id))}
-            onDuplicateTask={(task) => setTasks(prev => [...prev, { ...task, id: crypto.randomUUID(), name: `${task.name} (C)` }])}
-            onMoveTask={(taskId, newDate, newShift) => {
-               setTasks(prev => prev.map(task => {
-                if (task.id === taskId) {
-                  const oldStart = parseISO(task.startTime);
-                  const updatedStart = setMinutes(setHours(newDate, oldStart.getHours()), oldStart.getMinutes());
-                  return { ...task, startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"), shift: newShift };
-                }
-                return task;
-              }));
-            }}
-            weekStartDate={currentWeekStart}
-          />
-        </main>
-      </div>
+      <main className="w-full max-w-7xl mx-auto px-2 md:px-4 py-4 md:py-6 flex-1">
+        <WeeklyCalendar 
+          tasks={tasks} currentTime={currentTime}
+          onAddTask={(idx, shift) => {
+            const dayDate = addDays(currentWeekStart, idx);
+            setModalInitialData({ 
+              dayOfWeek: idx, shift, responsible: STAFF_LIST[0], prepTime: 15, cookTime: 60,
+              startTime: format(setMinutes(setHours(dayDate, 8), 0), "yyyy-MM-dd'T'HH:mm")
+            });
+            setEditingTask(undefined); setIsModalOpen(true);
+          }}
+          onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
+          onDeleteTask={(id) => setTasks(prev => prev.filter(t => t.id !== id))}
+          onDuplicateTask={(task) => setTasks(prev => [...prev, { ...task, id: crypto.randomUUID(), name: `${task.name} (C)` }])}
+          onMoveTask={(taskId, newDate, newShift) => {
+             setTasks(prev => prev.map(task => {
+              if (task.id === taskId) {
+                const oldStart = parseISO(task.startTime);
+                const updatedStart = setMinutes(setHours(newDate, oldStart.getHours()), oldStart.getMinutes());
+                return { ...task, startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"), shift: newShift };
+              }
+              return task;
+            }));
+          }}
+          weekStartDate={currentWeekStart}
+        />
+      </main>
 
       {/* ZONE DE CAPTURE PDF CACHÉE */}
       <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
@@ -239,7 +238,7 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
-    </div> 
+    </div>
   );
 };
 
