@@ -123,13 +123,13 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
     setDropTarget(null);
   };
 
-  // Helper pour les couleurs de fond douces par shift sur mobile
+  // Couleurs demandées pour les blocs mobile
   const getShiftBgColor = (shiftId: string) => {
     switch (shiftId) {
-      case 'morning': return 'bg-orange-50/40';
-      case 'afternoon': return 'bg-blue-50/40';
-      case 'evening': return 'bg-indigo-50/40';
-      default: return 'bg-slate-50/40';
+      case 'morning': return 'bg-orange-50/50';
+      case 'afternoon': return 'bg-blue-50/50';
+      case 'evening': return 'bg-green-50/50';
+      default: return 'bg-slate-50/50';
     }
   };
 
@@ -137,7 +137,6 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
     <div className="w-full">
       {/* --- VERSION MOBILE --- */}
       <div className="md:hidden space-y-4 pb-20">
-        {/* SÉLECTEUR DE JOUR */}
         <div className="sticky top-0 z-40 bg-[#F8FAFC]/95 backdrop-blur-sm py-4 px-4 flex gap-2 overflow-x-auto no-scrollbar">
           {weekDates.map((date, idx) => {
             const active = selectedDayIdx === idx;
@@ -156,7 +155,6 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
           })}
         </div>
 
-        {/* CONTENU DU JOUR SÉLECTIONNÉ */}
         <div className="space-y-6 px-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
           {SHIFTS.map((shift) => {
             const shiftTasks = tasks
