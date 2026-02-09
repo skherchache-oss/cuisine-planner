@@ -64,7 +64,6 @@ const TaskCard: React.FC<TaskCardProps> = ({
             </div>
           </div>
 
-          {/* ACTIONS DISCRÈTES ET PETITES SUR MOBILE */}
           <div className="flex gap-1.5 shrink-0 ml-2">
             <button 
               onClick={(e) => { e.stopPropagation(); onDuplicate(task); }}
@@ -124,12 +123,22 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
     setDropTarget(null);
   };
 
+  // Helper pour les couleurs de fond douces par shift sur mobile
+  const getShiftBgColor = (shiftId: string) => {
+    switch (shiftId) {
+      case 'morning': return 'bg-orange-50/40';
+      case 'afternoon': return 'bg-blue-50/40';
+      case 'evening': return 'bg-indigo-50/40';
+      default: return 'bg-slate-50/40';
+    }
+  };
+
   return (
     <div className="w-full">
       {/* --- VERSION MOBILE --- */}
-      <div className="md:hidden space-y-4 px-4 pb-20">
-        {/* SÉLECTEUR DE JOUR (Unique, remplace les dates du header si besoin) */}
-        <div className="sticky top-0 z-40 bg-[#F8FAFC]/95 backdrop-blur-sm py-4 -mx-4 px-4 flex gap-2 overflow-x-auto no-scrollbar">
+      <div className="md:hidden space-y-4 pb-20">
+        {/* SÉLECTEUR DE JOUR */}
+        <div className="sticky top-0 z-40 bg-[#F8FAFC]/95 backdrop-blur-sm py-4 px-4 flex gap-2 overflow-x-auto no-scrollbar">
           {weekDates.map((date, idx) => {
             const active = selectedDayIdx === idx;
             return (
@@ -148,20 +157,20 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
         </div>
 
         {/* CONTENU DU JOUR SÉLECTIONNÉ */}
-        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <div className="space-y-6 px-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
           {SHIFTS.map((shift) => {
             const shiftTasks = tasks
               .filter(t => t.shift === shift.id && isSameDay(parseISO(t.startTime), weekDates[selectedDayIdx]))
               .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
             return (
-              <div key={shift.id} className="space-y-4">
+              <div key={shift.id} className={`p-4 rounded-[2rem] border border-slate-100/50 space-y-4 ${getShiftBgColor(shift.id)}`}>
                 <div className="flex items-center gap-3">
                   <span className="text-xl">{shift.icon}</span>
-                  <h3 className="font-black text-[12px] uppercase tracking-[0.2em] text-slate-400">
+                  <h3 className="font-black text-[12px] uppercase tracking-[0.2em] text-slate-500">
                     {shift.label}
                   </h3>
-                  <div className="h-[1px] flex-1 bg-slate-200"></div>
+                  <div className="h-[1px] flex-1 bg-slate-200/50"></div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
@@ -171,7 +180,7 @@ const WeeklyCalendar: React.FC<WeeklyCalendarProps> = ({
                   
                   <button 
                     onClick={() => onAddTask(selectedDayIdx, shift.id as ShiftType)}
-                    className="w-full py-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-400 font-black text-[10px] uppercase tracking-widest active:bg-slate-100 transition-colors"
+                    className="w-full py-4 rounded-2xl border-2 border-dashed border-slate-200 bg-white/60 text-slate-400 font-black text-[10px] uppercase tracking-widest active:bg-slate-100 transition-colors"
                   >
                     + Ajouter au {shift.label}
                   </button>
