@@ -36,26 +36,29 @@ const App: React.FC = () => {
   
   const weekLabel = `Semaine du ${format(currentWeekStart, 'dd MMM', { locale: fr })} au ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
 
-  // GESTION DU BOUTON RETOUR SMARTPHONE
+  // --- GESTION DU BOUTON RETOUR SMARTPHONE (CORRIGÉE) ---
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
+      // Si une fenêtre est ouverte, on la ferme
       if (isModalOpen || isSettingsOpen) {
-        // Si une modal est ouverte, on la ferme et on empêche le retour arrière réel
         setIsModalOpen(false);
         setIsSettingsOpen(false);
       }
     };
 
+    // On écoute le changement d'historique
+    window.addEventListener('popstate', handlePopState);
+
+    // Si une modal s'ouvre, on "pousse" un état dans l'historique
     if (isModalOpen || isSettingsOpen) {
-      // Quand on ouvre, on ajoute une entrée fictive dans l'historique
-      window.history.pushState({ modalOpen: true }, '');
-      window.addEventListener('popstate', handlePopState);
+      window.history.pushState({ open: true }, "");
     }
 
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
   }, [isModalOpen, isSettingsOpen]);
+  // ------------------------------------------------------
 
   useEffect(() => {
     const saved = localStorage.getItem('cuisine_tasks');
@@ -114,6 +117,8 @@ const App: React.FC = () => {
       return exists ? prev.map(t => t.id === task.id ? task : t) : [...prev, { ...task, id: task.id || crypto.randomUUID() }];
     });
     setIsModalOpen(false);
+    // On nettoie l'historique si on ferme via le bouton enregistrer
+    if (window.history.state?.open) window.history.back();
   };
 
   const handleDownloadPDF = async () => {
@@ -170,7 +175,7 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* PLANNING MATIN / APRÈS-MIDI / SOIR */}
+        {/* PLANNING */}
         <main className="flex-1 overflow-y-auto bg-slate-50">
           <div className="max-w-7xl mx-auto">
             <WeeklyCalendar 
@@ -215,13 +220,21 @@ const App: React.FC = () => {
             </div>
             <div className="border-t-2 border-slate-50 pt-6 space-y-3">
               <button onClick={() => { if(confirm('Réinitialiser tout ?')) { localStorage.clear(); window.location.reload(); } }} className="w-full py-4 bg-red-100 text-red-600 rounded-2xl font-black text-[10px] uppercase border-2 border-red-200 active:scale-95 transition-all">⚠️ Reset Global</button>
-              <button onClick={() => setIsSettingsOpen(false)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all">Fermer</button>
+              <button onClick={() => { setIsSettingsOpen(false); if (window.history.state?.open) window.history.back(); }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase active:scale-95 transition-all">Fermer</button>
             </div>
           </div>
         </div>
       )}
 
-      <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveTask} initialTask={editingTask || modalInitialData} />
+      <TaskModal 
+        isOpen={isModalOpen} 
+        onClose={() => { 
+          setIsModalOpen(false); 
+          if (window.history.state?.open) window.history.back(); 
+        }} 
+        onSave={handleSaveTask} 
+        initialTask={editingTask || modalInitialData} 
+      />
       
       <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
         <div ref={printRef}>
