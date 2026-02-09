@@ -33,6 +33,7 @@ const App: React.FC = () => {
 
   const currentWeekStart = startOfDay(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }));
   const currentWeekEnd = addDays(currentWeekStart, 4);
+  const weekDates = Array.from({ length: 5 }, (_, i) => addDays(currentWeekStart, i));
   
   const weekLabel = `Semaine du ${format(currentWeekStart, 'dd MMM', { locale: fr })} au ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
 
@@ -114,43 +115,61 @@ const App: React.FC = () => {
       
       <div className="w-full max-w-[1400px] bg-[#F8FAFC] flex flex-col md:rounded-[2.5rem] md:shadow-2xl md:border border-slate-700 min-h-screen md:h-[92vh] overflow-hidden">
         
-        {/* BARRE OUTILS (SUPÉRIEURE) */}
-        <div className="bg-[#0F172A] text-white py-2 px-4 flex justify-between items-center shrink-0 z-50">
+        {/* TITRE DISCRET TOUT EN HAUT */}
+        <div className="bg-[#0F172A] text-slate-400 py-1 px-4 flex justify-center items-center shrink-0">
+          <span className="text-[7px] font-black uppercase tracking-[0.4em]">CUISINE PLANNER</span>
+        </div>
+
+        {/* BARRE OUTILS (NE RIEN TOUCHER) */}
+        <div className="bg-[#0F172A] text-white py-2 px-4 flex justify-between items-center shrink-0 z-50 border-t border-slate-800">
           <div className="flex gap-6 items-center">
-            <button onClick={() => setIsSettingsOpen(true)} className="text-xl active:scale-90 transition-transform">⚙️</button>
-            <button onClick={handleToggleAlerts} className={`text-xl active:scale-90 transition-transform ${isAlertsEnabled ? '' : 'grayscale opacity-30'}`}>
+            <button onClick={() => setIsSettingsOpen(true)} className="text-xl">⚙️</button>
+            <button onClick={handleToggleAlerts} className={`text-xl ${isAlertsEnabled ? '' : 'grayscale opacity-30'}`}>
               {isAlertsEnabled ? '🔔' : '🔕'}
             </button>
           </div>
           <button 
             onClick={handleDownloadPDF} 
-            disabled={isGeneratingPdf}
-            className="bg-red-600 text-white px-5 py-1.5 rounded-full font-black text-[11px] uppercase shadow-lg active:scale-95 border-b-2 border-red-800"
+            className="bg-red-600 text-white px-5 py-1.5 rounded-full font-black text-[11px] uppercase border-b-2 border-red-800"
           >
-            {isGeneratingPdf ? 'Génération...' : 'PDF'}
+            PDF
           </button>
         </div>
 
-        {/* NAVIGATION SEMAINE */}
+        {/* NAVIGATION SEMAINE (NE RIEN TOUCHER) */}
         <header className="bg-white border-b-2 border-slate-100 shrink-0 shadow-sm">
           <div className="px-4 py-4">
             <div className="flex items-center justify-between gap-3 max-w-xl mx-auto bg-slate-900 rounded-2xl p-1.5 shadow-inner">
-              <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-12 h-12 flex items-center justify-center bg-slate-800 text-white rounded-xl active:bg-slate-700">
+              <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-12 h-12 flex items-center justify-center bg-slate-800 text-white rounded-xl">
                 <span className="text-2xl font-bold">‹</span>
               </button>
               <h1 className="font-black text-xs md:text-lg uppercase tracking-tight text-white text-center flex-1 leading-tight">
                 {weekLabel}
               </h1>
-              <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-12 h-12 flex items-center justify-center bg-slate-800 text-white rounded-xl active:bg-slate-700">
+              <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-12 h-12 flex items-center justify-center bg-slate-800 text-white rounded-xl">
                 <span className="text-2xl font-bold">›</span>
               </button>
+            </div>
+
+            {/* BARRE DES DATES DÉTACHÉE ET INDÉPENDANTE EN LIGNE */}
+            <div className="flex justify-between mt-4 gap-1.5 overflow-x-auto no-scrollbar pb-1">
+              {weekDates.map((date, i) => (
+                <div key={i} className="flex-1 min-w-[65px] bg-white py-2.5 rounded-xl border-2 border-slate-100 shadow-sm flex flex-col items-center">
+                  <span className="text-[9px] font-black text-slate-400 uppercase">{format(date, 'EEEE', { locale: fr })}</span>
+                  <span className="text-base font-black text-slate-900">{format(date, 'dd')}</span>
+                </div>
+              ))}
             </div>
           </div>
         </header>
 
-        {/* ZONE CALENDRIER */}
-        <main className="flex-1 overflow-y-auto bg-white">
-          <div className="max-w-7xl mx-auto">
+        {/* PLANNING : VISIBLE, CLAIR, MATIN/APRÈS-MIDI/SOIR SÉPARÉS */}
+        <main className="flex-1 overflow-y-auto bg-slate-50">
+          <div className="max-w-7xl mx-auto p-1 md:p-4">
+            {/* WeeklyCalendar doit maintenant recevoir une prop pour masquer son header interne 
+                si vous l'avez déjà affiché au-dessus, ou bien on le laisse gérer le corps du planning 
+                pour garantir que les zones Matin/Après-midi/Soir soient l'une en dessous de l'autre.
+            */}
             <WeeklyCalendar 
               tasks={tasks} currentTime={currentTime}
               onAddTask={(idx, shift) => {
@@ -181,55 +200,31 @@ const App: React.FC = () => {
         </main>
       </div>
 
+      {/* MODAL PARAMÈTRES */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full shadow-2xl border-2 border-slate-200">
+            <h2 className="text-xl font-black mb-6 uppercase italic text-slate-800">Configuration</h2>
+            <div className="space-y-3 mb-6">
+              <button onClick={handleExportJSON} className="w-full py-4 bg-blue-50 text-blue-700 rounded-2xl font-black text-[10px] uppercase border-2 border-blue-100">📤 Sauvegarder JSON</button>
+              <button onClick={() => fileInputRef.current?.click()} className="w-full py-4 bg-slate-50 text-slate-700 rounded-2xl font-black text-[10px] uppercase border-2 border-slate-100">📥 Restaurer JSON</button>
+              <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />
+            </div>
+            <div className="border-t-2 border-slate-50 pt-6 space-y-3">
+              <button onClick={() => { if(confirm('Tout effacer ?')) { localStorage.clear(); window.location.reload(); } }} className="w-full py-4 bg-red-100 text-red-600 rounded-2xl font-black text-[10px] uppercase border-2 border-red-200">⚠️ Reset Global</button>
+              <button onClick={() => setIsSettingsOpen(false)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase">Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveTask} initialTask={editingTask || modalInitialData} />
+      
       <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
         <div ref={printRef}>
           <PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
         </div>
       </div>
-
-      <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveTask} initialTask={editingTask || modalInitialData} />
-      
-      {/* MODAL PARAMÈTRES (AVEC JSON ET RESET) */}
-      {isSettingsOpen && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] p-6 max-w-sm w-full shadow-2xl border-2 border-slate-200">
-            <h2 className="text-xl font-black mb-6 uppercase italic text-slate-800 tracking-tight">Configuration</h2>
-            
-            <div className="space-y-3 mb-6">
-              <button 
-                onClick={handleExportJSON} 
-                className="w-full py-4 bg-blue-50 text-blue-700 rounded-2xl font-black text-[10px] uppercase tracking-widest border-2 border-blue-100 active:scale-95 transition-all"
-              >
-                📤 Sauvegarder (JSON)
-              </button>
-              
-              <button 
-                onClick={() => fileInputRef.current?.click()} 
-                className="w-full py-4 bg-slate-50 text-slate-700 rounded-2xl font-black text-[10px] uppercase tracking-widest border-2 border-slate-100 active:scale-95 transition-all"
-              >
-                📥 Restaurer (JSON)
-              </button>
-              <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />
-            </div>
-
-            <div className="border-t-2 border-slate-50 pt-6 space-y-3">
-              <button 
-                onClick={() => { if(confirm('Tout effacer ? Cette action est irréversible.')) { localStorage.clear(); window.location.reload(); } }} 
-                className="w-full py-4 bg-red-100 text-red-600 rounded-2xl font-black text-[10px] uppercase tracking-widest border-2 border-red-200 active:scale-95 transition-all"
-              >
-                ⚠️ Reset Global
-              </button>
-              
-              <button 
-                onClick={() => setIsSettingsOpen(false)} 
-                className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
