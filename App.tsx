@@ -124,23 +124,22 @@ const App: React.FC = () => {
   };
 
   return (
-    /* CONTENEUR SOMBRE (Visible sur ordinateur uniquement via md:p-8) */
     <div className="min-h-screen bg-[#0F172A] md:p-8 flex items-center justify-center font-sans overflow-x-hidden">
       
-      {/* INTERFACE DE L'APPLI (Blanche et flottante sur PC, plein écran sur Mobile) */}
       <div className="w-full max-w-[1400px] bg-[#F8FAFC] flex flex-col md:rounded-[2.5rem] md:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] md:border border-slate-700 h-screen md:h-[92vh] overflow-hidden">
         
-        {/* Barre supérieure */}
+        {/* Barre supérieure noire */}
         <div className="bg-[#0F172A] text-white py-1 px-4 flex justify-between items-center shrink-0">
           <span className="font-black text-[8px] uppercase tracking-[0.2em]">BISTROT M — Kitchen Manager</span>
           <span className="text-[9px] font-bold">{format(currentTime, 'HH:mm', { locale: fr })}</span>
         </div>
 
         <header className="bg-white border-b-2 border-slate-200 sticky top-0 z-[100] shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-3 md:py-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
+          <div className="max-w-7xl mx-auto px-4 py-2 md:py-4">
+            {/* Conteneur Flex inversé sur mobile pour remonter les dates */}
+            <div className="flex flex-col-reverse md:flex-row md:items-center justify-between gap-3 md:gap-4">
               
-              {/* NAVIGATION SEMAINE */}
+              {/* NAVIGATION SEMAINE (Remonte en haut sur mobile grâce à flex-col-reverse) */}
               <div className="flex items-center bg-slate-900 rounded-2xl p-1 shadow-md w-full md:w-auto">
                 <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
                   <span className="text-xl font-bold">‹</span>
@@ -153,10 +152,8 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              {/* ACTION BAR */}
-              <div className="flex items-center justify-end gap-5 w-full md:w-auto">
-                
-                {/* BOUTON PDF */}
+              {/* ACTION BAR (Se place sous les dates sur mobile, à droite sur PC) */}
+              <div className="flex items-center justify-end gap-5 w-full md:w-auto pt-1 md:pt-0">
                 <button 
                   onClick={handleDownloadPDF} 
                   disabled={isGeneratingPdf}
@@ -168,7 +165,6 @@ const App: React.FC = () => {
                   </span>
                 </button>
 
-                {/* ICONE ALERTE */}
                 <button 
                   onClick={handleToggleAlerts} 
                   className={`text-2xl transition-all active:scale-90 ${isAlertsEnabled ? 'grayscale-0' : 'grayscale opacity-30'}`}
@@ -176,20 +172,18 @@ const App: React.FC = () => {
                   {isAlertsEnabled ? '🔔' : '🔕'}
                 </button>
 
-                {/* ICONE PARAMÈTRES */}
                 <button 
                   onClick={() => setIsSettingsOpen(true)} 
                   className="text-2xl transition-all active:scale-90 hover:rotate-12 text-slate-700"
                 >
                   ⚙️
                 </button>
-
               </div>
             </div>
           </div>
         </header>
 
-        <main className="w-full max-w-7xl mx-auto px-2 md:px-4 py-4 md:py-6 flex-1 overflow-y-auto">
+        <main className="w-full max-w-7xl mx-auto px-1 md:px-4 py-2 md:py-6 flex-1 overflow-y-auto">
           <WeeklyCalendar 
             tasks={tasks} currentTime={currentTime}
             onAddTask={(idx, shift) => {
@@ -218,7 +212,6 @@ const App: React.FC = () => {
         </main>
       </div>
 
-      {/* ZONE DE CAPTURE PDF CACHÉE */}
       <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
         <div ref={printRef} style={{ width: '287mm', backgroundColor: 'white' }}>
           <PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
@@ -227,7 +220,6 @@ const App: React.FC = () => {
 
       <TaskModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSaveTask} initialTask={editingTask || modalInitialData} />
       
-      {/* MODAL PARAMÈTRES */}
       {isSettingsOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border-4 border-slate-900">
