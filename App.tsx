@@ -33,7 +33,6 @@ const App: React.FC = () => {
 
   const currentWeekStart = startOfDay(startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }));
   const currentWeekEnd = addDays(currentWeekStart, 4);
-  const weekDates = Array.from({ length: 5 }, (_, i) => addDays(currentWeekStart, i));
   
   const weekLabel = `Semaine du ${format(currentWeekStart, 'dd MMM', { locale: fr })} au ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
 
@@ -115,7 +114,7 @@ const App: React.FC = () => {
       
       <div className="w-full max-w-[1400px] bg-[#F8FAFC] flex flex-col md:rounded-[2.5rem] md:shadow-2xl md:border border-slate-700 min-h-screen md:h-[92vh] overflow-hidden">
         
-        {/* NOUVELLE BARRE SUPÉRIEURE UNIQUE */}
+        {/* BARRE SUPÉRIEURE UNIQUE */}
         <div className="bg-[#0F172A] text-white py-3 px-4 flex justify-between items-center shrink-0 z-50">
           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-200">CUISINE PLANNER</span>
           
@@ -146,16 +145,6 @@ const App: React.FC = () => {
               <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-12 h-12 flex items-center justify-center bg-slate-800 text-white rounded-xl active:scale-95 transition-transform">
                 <span className="text-2xl font-bold">›</span>
               </button>
-            </div>
-
-            {/* BARRE DES DATES EN LIGNE */}
-            <div className="flex justify-between mt-4 gap-1.5 overflow-x-auto no-scrollbar pb-1">
-              {weekDates.map((date, i) => (
-                <div key={i} className="flex-1 min-w-[65px] bg-white py-2.5 rounded-xl border-2 border-slate-100 shadow-sm flex flex-col items-center">
-                  <span className="text-[9px] font-black text-slate-400 uppercase">{format(date, 'EEEE', { locale: fr })}</span>
-                  <span className="text-base font-black text-slate-900">{format(date, 'dd')}</span>
-                </div>
-              ))}
             </div>
           </div>
         </header>
