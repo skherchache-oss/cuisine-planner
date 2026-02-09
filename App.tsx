@@ -36,6 +36,27 @@ const App: React.FC = () => {
   
   const weekLabel = `Semaine du ${format(currentWeekStart, 'dd MMM', { locale: fr })} au ${format(currentWeekEnd, 'dd MMM yyyy', { locale: fr })}`;
 
+  // GESTION DU BOUTON RETOUR SMARTPHONE
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (isModalOpen || isSettingsOpen) {
+        // Si une modal est ouverte, on la ferme et on empêche le retour arrière réel
+        setIsModalOpen(false);
+        setIsSettingsOpen(false);
+      }
+    };
+
+    if (isModalOpen || isSettingsOpen) {
+      // Quand on ouvre, on ajoute une entrée fictive dans l'historique
+      window.history.pushState({ modalOpen: true }, '');
+      window.addEventListener('popstate', handlePopState);
+    }
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isModalOpen, isSettingsOpen]);
+
   useEffect(() => {
     const saved = localStorage.getItem('cuisine_tasks');
     if (saved) {
