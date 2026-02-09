@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { format, addWeeks, startOfWeek, addDays, setHours, setMinutes, startOfDay, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import jsPDF from 'jspdf'; // Correction de l'import ici (jspdf au lieu de jsPDF)
+import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 // Imports types, constantes et services
@@ -128,62 +128,64 @@ const App: React.FC = () => {
       
       <div className="w-full max-w-[1400px] bg-[#F8FAFC] flex flex-col md:rounded-[2.5rem] md:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] md:border border-slate-700 h-screen md:h-[92vh] overflow-hidden">
         
-        {/* Barre supérieure noire */}
-        <div className="bg-[#0F172A] text-white py-1 px-4 flex justify-between items-center shrink-0">
-          <span className="font-black text-[8px] uppercase tracking-[0.2em]">BISTROT M — Kitchen Manager</span>
-          <span className="text-[9px] font-bold">{format(currentTime, 'HH:mm', { locale: fr })}</span>
+        {/* BARRE NOIRE TOP - RÉDUITE SUR MOBILE */}
+        <div className="bg-[#0F172A] text-white py-0.5 md:py-1 px-4 flex justify-between items-center shrink-0">
+          <span className="font-black text-[7px] md:text-[8px] uppercase tracking-[0.2em]">BISTROT M — Kitchen Manager</span>
+          <span className="text-[8px] md:text-[9px] font-bold">{format(currentTime, 'HH:mm', { locale: fr })}</span>
         </div>
 
-        <header className="bg-white border-b-2 border-slate-200 sticky top-0 z-[100] shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 py-2 md:py-4">
-            {/* Conteneur Flex inversé sur mobile pour remonter les dates */}
-            <div className="flex flex-col-reverse md:flex-row md:items-center justify-between gap-3 md:gap-4">
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-[100] shadow-sm">
+          <div className="max-w-7xl mx-auto px-2 py-1.5 md:px-4 md:py-4">
+            {/* Flex column-reverse sur mobile pour mettre les dates en premier */}
+            <div className="flex flex-col-reverse md:flex-row md:items-center justify-between gap-2 md:gap-4">
               
-              {/* NAVIGATION SEMAINE (Remonte en haut sur mobile grâce à flex-col-reverse) */}
-              <div className="flex items-center bg-slate-900 rounded-2xl p-1 shadow-md w-full md:w-auto">
-                <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
-                  <span className="text-xl font-bold">‹</span>
+              {/* NAVIGATION SEMAINE - PLUS FINE SUR MOBILE */}
+              <div className="flex items-center bg-slate-900 rounded-xl p-0.5 shadow-md w-full md:w-auto">
+                <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center text-white active:scale-90">
+                  <span className="text-lg font-bold">‹</span>
                 </button>
-                <div className="flex-1 px-2 text-center">
-                  <h1 className="text-white font-black text-[10px] md:text-xs uppercase tracking-tight">{weekLabel}</h1>
+                <div className="flex-1 px-1 text-center">
+                  <h1 className="text-white font-black text-[9px] md:text-xs uppercase tracking-tight">{weekLabel}</h1>
                 </div>
-                <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-10 h-10 flex items-center justify-center text-white active:scale-90">
-                  <span className="text-xl font-bold">›</span>
+                <button onClick={() => setWeekOffset(prev => prev + 1)} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center text-white active:scale-90">
+                  <span className="text-lg font-bold">›</span>
                 </button>
               </div>
 
-              {/* ACTION BAR (Se place sous les dates sur mobile, à droite sur PC) */}
-              <div className="flex items-center justify-end gap-5 w-full md:w-auto pt-1 md:pt-0">
+              {/* ACTION BAR - TRÈS COMPACTE SUR MOBILE */}
+              <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto px-1 md:px-0">
+                <div className="flex gap-4 items-center">
+                   <button 
+                    onClick={() => setIsSettingsOpen(true)} 
+                    className="text-xl md:text-2xl transition-all active:scale-90 text-slate-700"
+                  >
+                    ⚙️
+                  </button>
+                  <button 
+                    onClick={handleToggleAlerts} 
+                    className={`text-xl md:text-2xl transition-all active:scale-90 ${isAlertsEnabled ? 'grayscale-0' : 'grayscale opacity-30'}`}
+                  >
+                    {isAlertsEnabled ? '🔔' : '🔕'}
+                  </button>
+                </div>
+
                 <button 
                   onClick={handleDownloadPDF} 
                   disabled={isGeneratingPdf}
-                  className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl shadow-md transition-all active:scale-95 border-b-4 border-red-800 disabled:opacity-50"
+                  className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg shadow-md transition-all active:scale-95 border-b-2 md:border-b-4 border-red-800 disabled:opacity-50"
                 >
-                  <span className="text-sm">{isGeneratingPdf ? '⏳' : '📄'}</span>
-                  <span className="font-black text-[10px] uppercase tracking-wider">
-                    {isGeneratingPdf ? 'Attente' : 'PDF'}
+                  <span className="text-xs md:text-sm">{isGeneratingPdf ? '⏳' : '📄'}</span>
+                  <span className="font-black text-[9px] md:text-[10px] uppercase tracking-wider">
+                    {isGeneratingPdf ? 'Wait' : 'PDF'}
                   </span>
-                </button>
-
-                <button 
-                  onClick={handleToggleAlerts} 
-                  className={`text-2xl transition-all active:scale-90 ${isAlertsEnabled ? 'grayscale-0' : 'grayscale opacity-30'}`}
-                >
-                  {isAlertsEnabled ? '🔔' : '🔕'}
-                </button>
-
-                <button 
-                  onClick={() => setIsSettingsOpen(true)} 
-                  className="text-2xl transition-all active:scale-90 hover:rotate-12 text-slate-700"
-                >
-                  ⚙️
                 </button>
               </div>
             </div>
           </div>
         </header>
 
-        <main className="w-full max-w-7xl mx-auto px-1 md:px-4 py-2 md:py-6 flex-1 overflow-y-auto">
+        {/* MAIN : Marges réduites (px-0) sur mobile pour gagner chaque pixel */}
+        <main className="w-full max-w-7xl mx-auto px-0 md:px-4 py-1 md:py-6 flex-1 overflow-y-auto">
           <WeeklyCalendar 
             tasks={tasks} currentTime={currentTime}
             onAddTask={(idx, shift) => {
@@ -212,6 +214,7 @@ const App: React.FC = () => {
         </main>
       </div>
 
+      {/* ZONE PDF CACHÉE */}
       <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
         <div ref={printRef} style={{ width: '287mm', backgroundColor: 'white' }}>
           <PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
