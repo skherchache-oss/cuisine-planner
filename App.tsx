@@ -124,22 +124,24 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0F172A] md:p-8 flex items-center justify-center font-sans overflow-x-hidden">
+    /* Arrière-plan sombre fixe */
+    <div className="min-h-screen bg-[#0F172A] md:p-8 flex items-center justify-center font-sans">
       
+      {/* Container de l'App - Sur mobile, on utilise h-screen, sur PC h-[92vh] */}
       <div className="w-full max-w-[1400px] bg-[#F8FAFC] flex flex-col md:rounded-[2.5rem] md:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] md:border border-slate-700 h-screen md:h-[92vh] overflow-hidden">
         
-        {/* BARRE NOIRE TOP - RÉDUITE SUR MOBILE */}
-        <div className="bg-[#0F172A] text-white py-0.5 md:py-1 px-4 flex justify-between items-center shrink-0">
-          <span className="font-black text-[7px] md:text-[8px] uppercase tracking-[0.2em]">BISTROT M — Kitchen Manager</span>
-          <span className="text-[8px] md:text-[9px] font-bold">{format(currentTime, 'HH:mm', { locale: fr })}</span>
+        {/* Barre supérieure noire (ne pas toucher) */}
+        <div className="bg-[#0F172A] text-white py-1 px-4 flex justify-between items-center shrink-0">
+          <span className="font-black text-[8px] uppercase tracking-[0.2em]">BISTROT M — Kitchen Manager</span>
+          <span className="text-[9px] font-bold">{format(currentTime, 'HH:mm', { locale: fr })}</span>
         </div>
 
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-[100] shadow-sm">
-          <div className="max-w-7xl mx-auto px-2 py-1.5 md:px-4 md:py-4">
-            {/* Flex column-reverse sur mobile pour mettre les dates en premier */}
+        {/* Header avec Navigation et Actions */}
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-[100] shrink-0">
+          <div className="max-w-7xl mx-auto px-2 py-2 md:px-4 md:py-4">
             <div className="flex flex-col-reverse md:flex-row md:items-center justify-between gap-2 md:gap-4">
               
-              {/* NAVIGATION SEMAINE - PLUS FINE SUR MOBILE */}
+              {/* Navigation Dates */}
               <div className="flex items-center bg-slate-900 rounded-xl p-0.5 shadow-md w-full md:w-auto">
                 <button onClick={() => setWeekOffset(prev => prev - 1)} className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center text-white active:scale-90">
                   <span className="text-lg font-bold">‹</span>
@@ -152,69 +154,57 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              {/* ACTION BAR - TRÈS COMPACTE SUR MOBILE */}
-              <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto px-1 md:px-0">
-                <div className="flex gap-4 items-center">
-                   <button 
-                    onClick={() => setIsSettingsOpen(true)} 
-                    className="text-xl md:text-2xl transition-all active:scale-90 text-slate-700"
-                  >
-                    ⚙️
-                  </button>
-                  <button 
-                    onClick={handleToggleAlerts} 
-                    className={`text-xl md:text-2xl transition-all active:scale-90 ${isAlertsEnabled ? 'grayscale-0' : 'grayscale opacity-30'}`}
-                  >
-                    {isAlertsEnabled ? '🔔' : '🔕'}
-                  </button>
-                </div>
-
+              {/* Barre d'outils */}
+              <div className="flex items-center justify-end gap-4 w-full md:w-auto">
+                <button onClick={() => setIsSettingsOpen(true)} className="text-xl md:text-2xl transition-all active:scale-90">⚙️</button>
+                <button onClick={handleToggleAlerts} className={`text-xl md:text-2xl transition-all active:scale-90 ${isAlertsEnabled ? 'grayscale-0' : 'grayscale opacity-30'}`}>{isAlertsEnabled ? '🔔' : '🔕'}</button>
                 <button 
                   onClick={handleDownloadPDF} 
                   disabled={isGeneratingPdf}
-                  className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg shadow-md transition-all active:scale-95 border-b-2 md:border-b-4 border-red-800 disabled:opacity-50"
+                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg shadow-md flex items-center gap-2 border-b-2 border-red-800 disabled:opacity-50"
                 >
-                  <span className="text-xs md:text-sm">{isGeneratingPdf ? '⏳' : '📄'}</span>
-                  <span className="font-black text-[9px] md:text-[10px] uppercase tracking-wider">
-                    {isGeneratingPdf ? 'Wait' : 'PDF'}
-                  </span>
+                  <span className="text-xs">📄</span>
+                  <span className="font-black text-[9px] uppercase">{isGeneratingPdf ? '...' : 'PDF'}</span>
                 </button>
               </div>
             </div>
           </div>
         </header>
 
-        {/* MAIN : Marges réduites (px-0) sur mobile pour gagner chaque pixel */}
-        <main className="w-full max-w-7xl mx-auto px-0 md:px-4 py-1 md:py-6 flex-1 overflow-y-auto">
-          <WeeklyCalendar 
-            tasks={tasks} currentTime={currentTime}
-            onAddTask={(idx, shift) => {
-              const dayDate = addDays(currentWeekStart, idx);
-              setModalInitialData({ 
-                dayOfWeek: idx, shift, responsible: STAFF_LIST[0], prepTime: 15, cookTime: 60,
-                startTime: format(setMinutes(setHours(dayDate, 8), 0), "yyyy-MM-dd'T'HH:mm")
-              });
-              setEditingTask(undefined); setIsModalOpen(true);
-            }}
-            onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
-            onDeleteTask={(id) => setTasks(prev => prev.filter(t => t.id !== id))}
-            onDuplicateTask={(task) => setTasks(prev => [...prev, { ...task, id: crypto.randomUUID(), name: `${task.name} (C)` }])}
-            onMoveTask={(taskId, newDate, newShift) => {
-               setTasks(prev => prev.map(task => {
-                if (task.id === taskId) {
-                  const oldStart = parseISO(task.startTime);
-                  const updatedStart = setMinutes(setHours(newDate, oldStart.getHours()), oldStart.getMinutes());
-                  return { ...task, startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"), shift: newShift };
-                }
-                return task;
-              }));
-            }}
-            weekStartDate={currentWeekStart}
-          />
+        {/* ZONE CALENDRIER : Correction ici pour remonter le tout */}
+        <main className="flex-1 overflow-y-auto w-full">
+          {/* Un container interne avec un padding minimal en haut pour remonter le calendrier */}
+          <div className="max-w-7xl mx-auto px-1 md:px-4 pt-1 pb-10 md:pt-4">
+            <WeeklyCalendar 
+              tasks={tasks} currentTime={currentTime}
+              onAddTask={(idx, shift) => {
+                const dayDate = addDays(currentWeekStart, idx);
+                setModalInitialData({ 
+                  dayOfWeek: idx, shift, responsible: STAFF_LIST[0], prepTime: 15, cookTime: 60,
+                  startTime: format(setMinutes(setHours(dayDate, 8), 0), "yyyy-MM-dd'T'HH:mm")
+                });
+                setEditingTask(undefined); setIsModalOpen(true);
+              }}
+              onEditTask={(t) => { setEditingTask(t); setIsModalOpen(true); }}
+              onDeleteTask={(id) => setTasks(prev => prev.filter(t => t.id !== id))}
+              onDuplicateTask={(task) => setTasks(prev => [...prev, { ...task, id: crypto.randomUUID(), name: `${task.name} (C)` }])}
+              onMoveTask={(taskId, newDate, newShift) => {
+                 setTasks(prev => prev.map(task => {
+                  if (task.id === taskId) {
+                    const oldStart = parseISO(task.startTime);
+                    const updatedStart = setMinutes(setHours(newDate, oldStart.getHours()), oldStart.getMinutes());
+                    return { ...task, startTime: format(updatedStart, "yyyy-MM-dd'T'HH:mm"), shift: newShift };
+                  }
+                  return task;
+                }));
+              }}
+              weekStartDate={currentWeekStart}
+            />
+          </div>
         </main>
       </div>
 
-      {/* ZONE PDF CACHÉE */}
+      {/* PDF HIDDEN LAYER */}
       <div style={{ position: 'absolute', left: '-9999px', top: 0, pointerEvents: 'none' }}>
         <div ref={printRef} style={{ width: '287mm', backgroundColor: 'white' }}>
           <PrintLayout tasks={tasks} weekLabel={weekLabel} weekStartDate={currentWeekStart} />
@@ -228,8 +218,8 @@ const App: React.FC = () => {
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border-4 border-slate-900">
             <h2 className="text-xl font-black mb-6 uppercase italic">Configuration</h2>
             <div className="space-y-3 mb-6">
-              <button onClick={handleExportJSON} className="w-full py-3 bg-blue-50 text-blue-700 rounded-xl font-black text-xs uppercase tracking-widest border-2 border-blue-200 active:scale-95 transition-all">📤 Sauvegarde JSON</button>
-              <button onClick={() => fileInputRef.current?.click()} className="w-full py-3 bg-slate-50 text-slate-700 rounded-xl font-black text-xs uppercase tracking-widest border-2 border-slate-200 active:scale-95 transition-all">📥 Restaurer JSON</button>
+              <button onClick={handleExportJSON} className="w-full py-3 bg-blue-50 text-blue-700 rounded-xl font-black text-xs uppercase tracking-widest border-2 border-blue-200 transition-all">📤 Sauvegarde JSON</button>
+              <button onClick={() => fileInputRef.current?.click()} className="w-full py-3 bg-slate-50 text-slate-700 rounded-xl font-black text-xs uppercase tracking-widest border-2 border-slate-200 transition-all">📥 Restaurer JSON</button>
               <input type="file" ref={fileInputRef} onChange={handleImportJSON} accept=".json" className="hidden" />
             </div>
             <div className="border-t-2 border-slate-100 pt-6 space-y-3">
